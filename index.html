@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Binder Color Match</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f5f1;--fg:#1f1f1d;--card:#fff;--bd:#d9d6cc;--ac:#c2410c;--mut:#6b6a64;--acs:rgba(194,65,12,.1);--sub:#efede6;
+--r:14px;--sh:0 1px 2px rgba(31,31,29,.06),0 6px 18px rgba(31,31,29,.06)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1b19;--fg:#ecebe6;--card:#262624;--bd:#3d3c38;--ac:#fb923c;--mut:#a3a29b;--acs:rgba(251,146,60,.14);--sub:#2e2e2b;--sh:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25)}}
+:root[data-theme="dark"]{--bg:#1b1b19;--fg:#ecebe6;--card:#262624;--bd:#3d3c38;--ac:#fb923c;--mut:#a3a29b;--acs:rgba(251,146,60,.14);--sub:#2e2e2b;--sh:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25)}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%}
+body{margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{height:100%;display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;padding:16px}
+.side{min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 4px 16px 2px}
+.main{min-height:0;overflow-y:auto;padding:0 6px 48px 0}
+.mbar{position:sticky;top:0;z-index:10;padding:2px 0 10px;background:var(--bg)}
+.mbar:has(.stat:empty){display:none}
+.top{margin:2px 0 2px}
+h1{font-size:26px;letter-spacing:-.02em;margin:0;line-height:1.1}
+.sub{margin:4px 0 0;color:var(--mut);font-size:14px}
+.stat{display:block;font-size:13px;color:var(--mut);background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:7px 12px;box-shadow:var(--sh)}
+.stat:empty{display:none}
+.toolbar{display:flex;flex-direction:column;gap:10px}
+.grp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;background:var(--card);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px;box-shadow:var(--sh)}
+.grp>.gl{grid-column:1/-1;margin:0}
+.grp .btn,.grp select{justify-content:center;width:100%}
+.grp .w1,details.opt{grid-column:1/-1}
+.grp .chk{grid-column:1/-1;justify-content:flex-start;width:auto}
+.gl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-right:2px}
+.btn,select,.chk{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:7px 12px;cursor:pointer;transition:background .15s,border-color .15s,transform .1s;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+.btn:hover,select:hover{border-color:var(--ac);background:var(--acs)}
+.btn:active{transform:translateY(1px)}
+.btn.p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.btn.p:hover{filter:brightness(1.08);background:var(--ac)}
+.btn.g{background:transparent}
+.chk{border:0;background:none;padding:4px 6px;font-size:14px;color:var(--mut)}
+input[type=file]{display:none}
+input[type=checkbox],input[type=range]{accent-color:var(--ac)}
+input[type=number]{width:54px;font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:5px 6px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+kbd{font:600 11px ui-monospace,Menlo,monospace;background:var(--sub);border:1px solid var(--bd);border-radius:5px;padding:0 5px;color:var(--mut)}
+details.opt summary{list-style:none}details.opt summary::-webkit-details-marker{display:none}
+#adv{justify-content:space-between}
+#adv.open{border-color:var(--ac);background:var(--acs)}
+#adv.open .chev{transform:rotate(180deg)}
+.pop[hidden]{display:none}
+.tr .hd button{font:inherit;font-size:12px;color:var(--fg);background:var(--sub);border:1px solid var(--bd);border-radius:8px;padding:3px 9px;cursor:pointer}
+.tr .hd button:hover{border-color:var(--ac)}
+.lbl{display:inline-flex;align-items:center;gap:8px}
+.chev{color:var(--mut);transition:transform .15s}
+.pop{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:8px;background:var(--sub);border:1px solid var(--bd);border-radius:10px;padding:10px}
+.pop>*{min-width:0}
+.pop select{width:auto!important;max-width:60%}
+.pop label span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.pop input[type=range]{width:55%;min-width:0}
+.pop label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;color:var(--mut)}
+.hint{margin:0;font-size:12.5px;color:var(--mut)}
+.side .tr{margin:0}.tr .hd{margin-bottom:2px}
+.tr{background:var(--card);border:1.5px dashed var(--bd);border-radius:var(--r);padding:10px 12px;margin-bottom:16px;min-height:64px;transition:border-color .15s,background .15s}
+.tr.ov{border-color:var(--ac);background:var(--acs)}
+.tr .hd>span:first-child{font-weight:500;font-size:13px;color:var(--mut)}
+.tl{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:200px;overflow:auto}
+.tl img{height:64px;border-radius:6px;cursor:pointer;opacity:.85;transition:transform .15s,opacity .15s}
+.tl img:hover{opacity:1;transform:translateY(-2px)}
+.s{color:var(--mut);font-size:13px;margin:0 0 8px}
+.sgi{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:8px 10px;margin-bottom:8px;font-size:13px;box-shadow:var(--sh)}
+.sgi img{height:52px;border-radius:6px}.sgi span{flex:1;min-width:180px}
+.pages{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+.pages.w{grid-template-columns:repeat(auto-fill,minmax(min(100%,600px),1fr))}
+.pg{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;box-shadow:var(--sh)}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--mut);margin-bottom:10px}
+.pg .hd>span:first-child{font-weight:650;font-size:14px;color:var(--fg)}
+.pc{display:flex;gap:6px;align-items:center}
+.pc button{background:var(--sub);border:1px solid var(--bd);border-radius:8px;padding:3px 7px;cursor:pointer;color:var(--fg);font:inherit}
+.pc button:hover{border-color:var(--ac)}
+.pc input{width:30px;height:26px;padding:0;border:1px solid var(--bd);border-radius:8px;background:none;cursor:pointer}
+.pc small{margin-left:4px;font-size:12px}
+.g{display:grid;gap:8px}
+.c{position:relative;aspect-ratio:63/88;border-radius:8px;overflow:hidden;background:#888;cursor:grab;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s,box-shadow .15s}
+.c:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.28)}
+.c:active{cursor:grabbing}
+.c img{width:100%;height:100%;object-fit:cover;display:block}
+.c.sel{outline:3px solid var(--ac);outline-offset:2px}
+.c.lk{box-shadow:0 0 0 2px #2563eb}
+.c.bad{outline:2px dashed #dc2626;outline-offset:2px}
+.c.ov{outline:2px dashed var(--ac);outline-offset:2px}
+.n{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.62);color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:999px}
+.c i{position:absolute;left:0;right:0;bottom:0;height:7px}
+.e{color:var(--mut);padding:48px 20px;text-align:center;border:1.5px dashed var(--bd);border-radius:var(--r);background:var(--card)}
+.e::before{content:"🎴";display:block;font-size:38px;margin-bottom:6px}
+.mod{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}.mod[hidden]{display:none}
+.mp{background:var(--card);border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);width:min(1000px,100%);max-height:100%;display:flex;flex-direction:column;overflow:hidden}
+.mh{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-bottom:1px solid var(--bd)}
+.mh input[type=text]{flex:1;min-width:160px;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:7px 10px}
+.mb{overflow:auto;padding:12px 14px;flex:1;min-height:140px}
+.rg{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.rc{cursor:pointer;border-radius:10px;border:2px solid transparent;padding:4px;text-align:center;font-size:11px;color:var(--mut);transition:border-color .15s,background .15s}
+.rc img{width:100%;aspect-ratio:63/88;object-fit:cover;border-radius:6px;background:var(--sub);display:block;margin-bottom:3px}
+.rc.on{border-color:var(--ac);background:var(--acs)}
+.mf{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 14px;border-top:1px solid var(--bd)}
+.foot{position:sticky;bottom:0;margin-top:auto;display:flex;align-items:center;gap:10px;background:var(--bg);padding:8px 0 2px}
+.helpb{flex:none;width:34px;height:34px;border-radius:50%;border:1px solid var(--bd);background:var(--card);color:var(--fg);font:700 16px system-ui,sans-serif;cursor:pointer;box-shadow:var(--sh);transition:border-color .15s,background .15s}
+.helpb:hover{border-color:var(--ac);background:var(--acs)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:10px;counter-reset:s}
+.steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;column-gap:12px;row-gap:2px;background:var(--sub);border:1px solid var(--bd);border-radius:12px;padding:10px 12px}
+.steps li::before{content:counter(s);grid-row:1/3;width:26px;height:26px;border-radius:50%;background:var(--ac);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.steps b{font-size:14px}.steps span{font-size:13.5px;color:var(--mut)}.steps em{font-style:normal;color:var(--fg);font-weight:600}
+.note{margin:12px 0 0;padding:10px 12px;border-radius:12px;background:var(--acs);font-size:13px}
+.qs{font-size:13px;color:var(--mut);margin:0 0 10px}
+input#im{display:none}
+@media (max-width:860px){html,body{height:auto}body{overflow:auto}.app{display:block;height:auto;padding:12px}.side{overflow:visible;margin-bottom:14px;padding:0}.main{overflow:visible;padding:0}.mbar{top:env(safe-area-inset-top,0px)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <header class="top"><h1>Binder Color Match do Aurelis</h1><p class="sub">Organize o seu fichário de cartas por cor.</p></header>
+  <section class="toolbar">
+    <div class="grp"><span class="gl">Adicionar</span>
+      <label class="btn w1">＋ Cartas<input id="f" type="file" accept="image/*" multiple></label>
+      <label class="btn w1">📷 Foto com várias cartas<input id="pf" type="file" accept="image/*" multiple></label>
+      <button class="btn w1" id="sb">🔎 Buscar cartas na API</button>
+      <button class="btn w1" id="adv" aria-expanded="false" aria-controls="pop"><span class="lbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h8M20 6h-4M4 12h2M20 12h-8M4 18h10M20 18h-2"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>Ajustes da foto</span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      <div class="pop w1" id="pop" hidden>
+          <label>Modo <select id="md"><option value="grid">Dividir em grade</option><option value="auto">Detecção automática</option></select></label>
+          <label>Grade (col × lin) <span><input id="gc" type="number" value="3" min="1" max="12"> × <input id="gr" type="number" value="3" min="1" max="12"></span></label>
+          <label>Margem (%) <input id="gm" type="number" value="3" min="0" max="20"></label>
+          <label>Sensibilidade <input id="sv" type="range" min="8" max="45" value="20"></label>
+          <button class="btn" id="rd">Redetectar última foto</button>
+      </div>
+    </div>
+    <div class="grp"><span class="gl">Organizar</span>
+      <select id="sz" class="w1"><option value="9">Página 3×3 (9)</option><option value="18">Spread 3×6 (18)</option></select>
+      <button class="btn p w1" id="go">Organizar por cor</button>
+      <button class="btn" id="opt">Refinar</button>
+      <button class="btn" id="sug">Sugerir trocas</button>
+      <label class="chk"><input type="checkbox" id="ao" checked> Organizar ao adicionar</label>
+    </div>
+    <div class="grp"><span class="gl">Carta selecionada</span>
+      <button class="btn" id="lk">🔒 Travar <kbd>L</kbd></button>
+      <button class="btn" id="rm">🗑️ Remover <kbd>R</kbd></button>
+    </div>
+    <div class="grp"><span class="gl">Backup</span>
+      <button class="btn w1" id="rc" title="Refaz a paleta de todas as cartas e reorganiza (cartas e páginas travadas ficam)">🎨 Recalcular cores</button>
+      <button class="btn" id="ex" title="Baixa o backup (.json) e uma imagem (.png) com todas as páginas">⬇ Exportar</button>
+      <label class="btn" title="Substitui o fichário atual">⬆ Importar<input id="im" type="file" accept=".json,application/json"></label>
+    </div>
+    <button class="btn g" id="clr">Limpar</button>
+  </section>
+  <div id="tr" class="tr"></div>
+  <div class="foot"><button class="helpb" id="hb" title="Como usar" aria-label="Como usar o site">?</button><span class="hint">Precisa de ajuda? Clique no <b>?</b> para ver o passo a passo.</span></div>
+</aside>
+<main class="main">
+  <div class="mbar"><span id="st" class="stat"></span></div>
+  <div id="sg"></div>
+  <div id="out"></div>
+</main>
+</div>
+<div class="mod" id="mod" hidden>
+  <div class="mp">
+    <div class="mh">
+      <strong style="margin-right:6px">Buscar cartas (TCGdex)</strong>
+      <select id="lang"><option value="pt">Português</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="ja">日本語</option></select>
+      <input id="q" type="text" placeholder="Nome da carta (ex.: Mew, Pikachu)">
+      <button class="btn p" id="qb">Buscar</button>
+      <button class="btn g" id="mx" aria-label="Fechar">✕</button>
+    </div>
+    <div class="mb"><p class="qs" id="qs">Digite um nome e clique em Buscar. Clique nas cartas para selecioná-las.</p><div class="rg" id="qr"></div></div>
+    <div class="mf"><button class="btn" id="qm" hidden>Carregar mais</button><span></span><button class="btn p" id="qa">Adicionar ao fichário (0)</button></div>
+  </div>
+</div>
+<div class="mod" id="help" hidden role="dialog" aria-modal="true" aria-labelledby="ht">
+  <div class="mp" style="width:min(660px,100%)">
+    <div class="mh"><strong id="ht">Como usar o Binder Color Match do Aurelis</strong><span style="flex:1"></span><button class="btn g" id="hx" aria-label="Fechar">✕</button></div>
+    <div class="mb">
+      <ol class="steps">
+        <li><b>Adicione suas cartas</b><span>Use <em>＋ Cartas</em> para fotos avulsas, <em>📷 Foto com várias cartas</em> para dividir uma foto em grade (ajuste colunas, linhas e margem em <em>Ajustes da foto</em>) ou <em>🔎 Buscar cartas na API</em> para baixar a imagem oficial. Dá para adicionar quantas vezes quiser.</span></li>
+        <li><b>Organize por cor</b><span>Escolha <em>Página 3×3</em> ou <em>Spread 3×6</em> e clique em <em>Organizar por cor</em>. As cartas são agrupadas por página e as vizinhas ficam com cores parecidas.</span></li>
+        <li><b>Ajuste do seu jeito</b><span><em>Arraste</em> uma carta sobre outra para trocá-las. <em>Clique</em> numa carta para selecioná-la: <kbd>L</kbd> trava ou destrava (ela não sai do lugar ao organizar) e <kbd>R</kbd> a envia para a lixeira.</span></li>
+        <li><b>Controle cada página</b><span>No topo de cada página, o <em>cadeado</em> mantém as cartas dela no lugar e o <em>seletor de cor</em> define a cor desejada. Clique em <em>Organizar por cor</em> para aplicar.</span></li>
+        <li><b>Refine e confira</b><span><em>Refinar</em> procura mais trocas e <em>Sugerir trocas</em> lista melhorias com botão Aplicar. O número <em>ΔE</em> no status mede a harmonia: quanto menor, mais parecidas são as cartas vizinhas.</span></li>
+        <li><b>Salve e exporte</b><span>Tudo é salvo sozinho neste navegador. <em>Exportar</em> baixa um backup (.json) e uma imagem (.png) com todas as páginas; <em>Importar</em> restaura um backup. A lixeira guarda cartas removidas até você esvaziá-la.</span></li>
+      </ol>
+      <p class="note"><b>Importante:</b> Caso tenha alguma sugestão para o site, mande para o email: aurelianoclaudio29@gmail.com</p>
+    </div>
+    <div class="mf"><label class="chk"><input type="checkbox" id="hn"> Não mostrar novamente</label><button class="btn p" id="hs">Começar</button></div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let cards=[],order=[],sel=null,num=0,photoId=0,lastPhoto=null,trash=[],drag=null,pcfg={};
+function addCard(src,pal,ph){cards.push({id:'c'+(++num),num,src,pal,lab:pal[0].c,ph})}
+
+// ---- cor ----
+function rgb2lab(r,g,b){
+  [r,g,b]=[r,g,b].map(v=>{v/=255;return v>.04045?Math.pow((v+.055)/1.055,2.4):v/12.92});
+  let x=(r*.4124+g*.3576+b*.1805)/.95047,y=r*.2126+g*.7152+b*.0722,z=(r*.0193+g*.1192+b*.9505)/1.08883;
+  [x,y,z]=[x,y,z].map(v=>v>.008856?Math.cbrt(v):7.787*v+16/116);
+  return [116*y-16,500*(x-y),200*(y-z)];
+}
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+function lab2css(l){ // aproximação para amostra visual
+  let fy=(l[0]+16)/116,fx=fy+l[1]/500,fz=fy-l[2]/200;
+  const f=t=>t**3>.008856?t**3:(t-16/116)/7.787;
+  let x=f(fx)*.95047,y=f(fy),z=f(fz)*1.08883;
+  let r=x*3.2406-y*1.5372-z*.4986,g=-x*.9689+y*1.8758+z*.0415,b=x*.0557-y*.204+z*1.057;
+  const c=v=>Math.round(255*Math.min(1,Math.max(0,v>.0031308?1.055*Math.pow(v,1/2.4)-.055:12.92*v)));
+  return `rgb(${c(r)},${c(g)},${c(b)})`;
+}
+function dominant(img){
+  const cv=document.createElement('canvas');cv.width=40;cv.height=56;
+  const x=cv.getContext('2d'),w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+  x.drawImage(img,w*.06,h*.045,w*.88,h*.91,0,0,40,56);
+  const d=x.getImageData(0,0,40,56).data;let px=[],wt=[];
+  for(let i=0;i<d.length;i+=4){const l=rgb2lab(d[i],d[i+1],d[i+2]);px.push(l);wt.push(.35+Math.min(Math.hypot(l[1],l[2]),60)/40)} // cores vivas pesam mais
+  const keep=px.map((_,i)=>i).filter(i=>px[i][0]>8&&px[i][0]<97); // ignora preto/branco puros (bordas, sombras)
+  if(keep.length>px.length*.4){px=keep.map(i=>px[i]);wt=keep.map(i=>wt[i])}
+  let cs=[px[0].slice()],as;
+  while(cs.length<4){let b=px[0],bd=-1;for(const p of px){const q=Math.min(...cs.map(c=>dd(p,c)));if(q>bd){bd=q;b=p}}cs.push(b.slice())}
+  for(let it=0;it<8;it++){
+    as=px.map(p=>{let b=0,bd=1e9;cs.forEach((c,i)=>{const q=dd(p,c);if(q<bd){bd=q;b=i}});return b});
+    cs=cs.map((c,i)=>{const s=[0,0,0];let W=0;px.forEach((p,j)=>{if(as[j]===i){const q=wt[j];s[0]+=p[0]*q;s[1]+=p[1]*q;s[2]+=p[2]*q;W+=q}});return W?s.map(v=>v/W):c});
+  }
+  const tot=wt.reduce((a,b)=>a+b,0);
+  const pal=cs.map((c,i)=>({c,w:wt.reduce((s,q,j)=>s+(as[j]===i?q:0),0)/tot})).filter(q=>q.w>=.08).sort((a,b)=>b.w-a.w);
+  const t=pal.reduce((s,q)=>s+q.w,0);pal.forEach(q=>q.w/=t);return pal;
+}
+
+// ---- organização ----
+const chroma=l=>Math.hypot(l[1],l[2]);
+const hueKey=l=>(Math.atan2(l[2],l[1])*180/Math.PI+330)%360; // vermelho -> laranja -> amarelo -> verde -> azul -> roxo -> rosa
+function sortKey(a,b){
+  const na=chroma(a.lab)<14,nb=chroma(b.lab)<14;
+  if(na!==nb)return na?1:-1;               // neutros por último
+  if(na&&nb)return b.lab[0]-a.lab[0];      // neutros: claro -> escuro
+  return hueKey(a.lab)-hueKey(b.lab)||a.lab[0]-b.lab[0];
+}
+const pagesOf=n=>{const p=[];for(let i=0;i<order.length;i+=n)p.push(order.slice(i,i+n));return p};
+let M=new Map();const sync=()=>{M=new Map(cards.map(c=>[c.id,c]))};const byId=id=>M.get(id);
+// distância perceptual (luminosidade pesa menos que matiz) entre paletas de cores
+const dd=(a,b)=>Math.hypot(.6*(a[0]-b[0]),a[1]-b[1],a[2]-b[2]);
+function pd(A,B){
+  const h=(P,Q)=>P.reduce((s,p)=>s+p.w*Math.min(...Q.map(q=>dd(p.c,q.c))),0);
+  return (h(A,B)+h(B,A))/2;
+}
+const pc=new Map();
+function pdId(a,b){
+  const A=byId(a),B=byId(b),k=A.num<B.num?A.num*65536+B.num:B.num*65536+A.num;
+  let v=pc.get(k);if(v===undefined){v=pd(A.pal,B.pal);pc.set(k,v)}return v;
+}
+const hex2lab=h=>rgb2lab(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));
+const tgt=pi=>pi!=null&&pcfg[pi]&&pcfg[pi].color?hex2lab(pcfg[pi].color):null;
+const dT=(id,T)=>pd(byId(id).pal,[{c:T,w:1}]);
+const pageLocked=i=>!!(pcfg[i]&&pcfg[i].lock);
+function pageCost(ids,pi){ // coesão entre as cartas; com cor-alvo, a proximidade da cor pesa mais
+  let s=0,c=0;
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){s+=pdId(ids[i],ids[j]);c++}
+  const coh=c?s/c:0,T=tgt(pi);
+  return T&&ids.length?coh*.4+ids.reduce((q,id)=>q+dT(id,T),0)/ids.length:coh;
+}
+function adj(ids,cols){ // vizinhos lado a lado e acima/abaixo no fichário
+  let s=0;
+  for(let i=0;i<ids.length;i++){
+    if(i%cols<cols-1&&i+1<ids.length)s+=pdId(ids[i],ids[i+1]);
+    if(i+cols<ids.length)s+=pdId(ids[i],ids[i+cols]);
+  }
+  return s;
+}
+function layout(ids,cols){ // polimento: melhora a vizinhança dentro da página sem reordenar do zero
+  const F=ids.map((_,i)=>i).filter(i=>!byId(ids[i]).locked),a=[...ids];let best=adj(a,cols);
+  for(let t=0;t<3000&&F.length>1;t++){
+    const i=F[Math.floor(Math.random()*F.length)],j=F[Math.floor(Math.random()*F.length)];if(i===j)continue;
+    [a[i],a[j]]=[a[j],a[i]];const v=adj(a,cols);
+    if(v<best-1e-9)best=v;else [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function harmony(){ // distância média (ΔE) entre cartas vizinhas; menor = mais parecidas
+  const n=+$('sz').value,cols=n===9?3:6;let s=0,c=0;
+  pagesOf(n).forEach(p=>{for(let i=0;i<p.length;i++){
+    if(i%cols<cols-1&&i+1<p.length){s+=pdId(p[i],p[i+1]);c++}
+    if(i+cols<p.length){s+=pdId(p[i],p[i+cols]);c++}}});
+  return c?s/c:0;
+}
+function optimize(iter,T0){
+  sync();const n=+$('sz').value,cols=n===9?3:6,N=order.length;if(N<2)return;
+  const cs=order.map(byId),D=new Float32Array(N*N);
+  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++)D[i*N+j]=D[j*N+i]=pd(cs[i].pal,cs[j].pal);
+  const np=Math.ceil(N/n),TG=[],P=cs.map((_,i)=>i);
+  for(let p=0;p<np;p++){const T=tgt(p);TG[p]=T&&!pageLocked(p)?cs.map(c=>pd(c.pal,[{c:T,w:1}])):null}
+  const pageE=p=>{ // energia da página = coesão (todos os pares) + vizinhança (grade) [+ distância à cor-alvo]
+    const a=p*n,b=Math.min(N,a+n),m=b-a;let s=0,c=0,as=0,ac=0;
+    for(let i=a;i<b;i++){
+      for(let j=i+1;j<b;j++){s+=D[P[i]*N+P[j]];c++}
+      const r=i-a;
+      if(r%cols<cols-1&&i+1<b){as+=D[P[i]*N+P[i+1]];ac++}
+      if(r+cols<m){as+=D[P[i]*N+P[i+cols]];ac++}
+    }
+    const coh=c?s/c:0,adjm=ac?as/ac:0,tg=TG[p];
+    if(!tg)return coh+adjm;
+    let q=0;for(let i=a;i<b;i++)q+=tg[P[i]];
+    return coh*.4+adjm*.5+q/m;
+  };
+  const E=[];for(let p=0;p<np;p++)E[p]=pageE(p);
+  const free=[];for(let i=0;i<N;i++)if(!cs[P[i]].locked&&!pageLocked((i/n)|0))free.push(i);
+  if(free.length>1){
+    const t0=T0||3,t1=.03;let tot=E.reduce((a,b)=>a+b,0),best=tot,bestP=P.slice();
+    for(let t=0;t<iter;t++){
+      const T=t0*Math.pow(t1/t0,t/iter),i=free[Math.random()*free.length|0],j=free[Math.random()*free.length|0];
+      if(i===j)continue;
+      const pi=(i/n)|0,pj=(j/n)|0;
+      [P[i],P[j]]=[P[j],P[i]];
+      const e1=pageE(pi),e2=pi===pj?0:pageE(pj),d=pi===pj?e1-E[pi]:e1+e2-E[pi]-E[pj];
+      if(d<=0||Math.random()<Math.exp(-d/T)){E[pi]=e1;if(pi!==pj)E[pj]=e2;tot+=d;if(tot<best-1e-9){best=tot;bestP=P.slice()}}else [P[i],P[j]]=[P[j],P[i]];
+    }
+    for(let k=0;k<N;k++)P[k]=bestP[k]; // fica com a melhor configuração encontrada
+  }
+  order=P.map(k=>cs[k].id);
+  const lk=id=>byId(id).locked,pgs=pagesOf(n).map((p,i)=>pageLocked(i)?p:layout(p,cols));
+  const fixed=pgs.map((p,i)=>p.some(lk)||p.length<n||pageLocked(i)||!!tgt(i)),free2=pgs.filter((_,i)=>!fixed[i]);
+  const key=p=>{ // cor média da página: define a ordem das páginas (arco-íris; neutras por último)
+    let a=0,b=0,L=0;p.forEach(id=>{const l=byId(id).lab;a+=l[1];b+=l[2];L+=l[0]});a/=p.length;b/=p.length;L/=p.length;
+    return Math.hypot(a,b)<12?400+(100-L):hueKey([0,a,b]);
+  };
+  free2.sort((a,b)=>key(a)-key(b));
+  let f=0;order=pgs.map((p,i)=>fixed[i]?p:free2[f++]).flat();
+}
+function bar(p){let a=0;return 'linear-gradient(90deg,'+p.map(q=>{const s=a;a+=q.w*100;return lab2css(q.c)+' '+s+'% '+a+'%'}).join(',')+')'}
+function organize(){
+  sync();const n=+$('sz').value,N=cards.length,ord=new Array(N).fill(null);
+  cards.forEach(c=>{const p=order.indexOf(c.id);if(p>=0&&p<N&&ord[p]===null&&(c.locked||pageLocked(Math.floor(p/n))))ord[p]=c.id});
+  const pool=cards.filter(c=>!ord.includes(c.id));
+  for(let pi=0;pi*n<N;pi++){ // páginas com cor: pega as cartas mais próximas da cor
+    const T=tgt(pi);if(!T||pageLocked(pi))continue;
+    const slots=[];for(let i=pi*n;i<Math.min(N,pi*n+n);i++)if(ord[i]===null)slots.push(i);
+    pool.sort((a,b)=>pd(a.pal,[{c:T,w:1}])-pd(b.pal,[{c:T,w:1}]));
+    slots.forEach(i=>{const c=pool.shift();if(c)ord[i]=c.id});
+  }
+  const rest=pool.sort(sortKey).map(c=>c.id);
+  let k=0;for(let i=0;i<N;i++)if(ord[i]===null)ord[i]=rest[k++];
+  order=ord;sel=null;optimize(Math.min(80000,Math.max(10000,N*350)),3);render();$('st').textContent+=' · harmonia ΔE '+harmony().toFixed(1)+' (menor = vizinhas mais parecidas)';
+}
+function refine(){optimize(Math.min(120000,Math.max(20000,cards.length*600)),.8);sel=null;render();$('st').textContent='Refinado · harmonia ΔE '+harmony().toFixed(1)+' (menor = vizinhas mais parecidas)'}
+
+// ---- UI ----
+function render(){
+  sync();renderTrash();save();$('sg').innerHTML='';const n=+$('sz').value,out=$('out');
+  if(!cards.length){out.innerHTML='<div class="e">Nenhuma carta ainda. Envie as imagens para começar.</div>';return}
+  const pgs=pagesOf(n),cols=n===9?3:6;
+  out.innerHTML='<div class="pages '+(n===18?'w':'')+'"></div>';
+  const box=out.firstChild;
+  pgs.forEach((ids,pi)=>{
+    const T=tgt(pi),cf=pcfg[pi]||{},ds=ids.map(a=>T?dT(a,T):ids.length<2?0:ids.reduce((s,b)=>s+(a===b?0:pdId(a,b)),0)/(ids.length-1)),worst=ds.indexOf(Math.max(...ds)),pm=ds.reduce((s,v)=>s+v,0)/ds.length;
+    const pg=document.createElement('div');pg.className='pg';
+    pg.innerHTML=`<div class="hd"><span>Página ${pi+1}</span><span class="pc"><button title="Travar página: mantém estas cartas aqui">${cf.lock?'🔒':'🔓'}</button><input type="color" value="${cf.color||'#888888'}" title="Cor desejada para esta página"><button title="Remover cor" style="display:${cf.color?'inline-block':'none'}">✕</button><small>${T?'Δ cor '+pm.toFixed(1):'dispersão '+pageCost(ids).toFixed(1)}</small></span></div><div class="g" style="grid-template-columns:repeat(${cols},1fr)"></div>`;
+    const g=pg.lastChild,hc=pg.querySelector('.pc');
+    hc.children[0].onclick=()=>{pcfg[pi]={...cf,lock:!cf.lock};render();$('st').textContent='Página '+(pi+1)+(cf.lock?' destravada.':' travada: as cartas dela ficam no lugar.')};
+    hc.children[1].onchange=e=>{pcfg[pi]={...cf,color:e.target.value};render();$('st').textContent='Página '+(pi+1)+': cor definida. Clique em "Organizar por cor" para aplicar.'};
+    hc.children[2].onclick=()=>{pcfg[pi]={...cf,color:null};render()};
+    ids.forEach((id,k)=>{
+      const c=byId(id),d=document.createElement('div');
+      d.className='c'+(sel===id?' sel':'')+(c.locked?' lk':'')+(k===worst&&ids.length>2&&!c.locked&&ds[k]>22&&ds[k]>pm*1.3?' bad':'');
+      d.innerHTML=`<b class="n">${c.num}${c.locked?' 🔒':''}</b><img src="${c.src}" alt="" draggable="false"><i style="background:${bar(c.pal)}"></i>`;
+      d.onclick=()=>{sel=sel===id?null:id;render()};
+      d.draggable=!c.locked;
+      d.ondragstart=e=>{drag=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id);d.style.opacity='.4'};
+      d.ondragend=()=>{drag=null;d.style.opacity=''};
+      d.ondragover=e=>{if(drag&&drag!==id){e.preventDefault();d.classList.add('ov')}};
+      d.ondragleave=()=>d.classList.remove('ov');
+      d.ondrop=e=>{e.preventDefault();swapCards(drag,id)};
+      g.appendChild(d);
+    });
+    box.appendChild(pg);
+  });
+  $('st').textContent=cards.length+' cartas · '+pgs.length+' página(s)';
+}
+// ---- foto única: detecção das cartas ----
+const loadImg=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src});
+function crop(img,x,y,w,h,ph){
+  const s=Math.min(1,320/Math.max(w,h)),cv=document.createElement('canvas'),rot=w>h;
+  cv.width=Math.max(1,Math.round((rot?h:w)*s));cv.height=Math.max(1,Math.round((rot?w:h)*s));
+  const c=cv.getContext('2d');
+  if(rot){c.translate(cv.width,0);c.rotate(Math.PI/2);c.drawImage(img,x,y,w,h,0,0,w*s,h*s)}
+  else c.drawImage(img,x,y,w,h,0,0,cv.width,cv.height);
+  addCard(cv.toDataURL('image/jpeg',.85),dominant(cv),ph);
+}
+function morph(m,w,h,r,dil){
+  const t=new Uint8Array(w*h),o=new Uint8Array(w*h),hit=v=>dil?v:!v,edge=dil?0:1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=dil?0:1;
+    for(let k=-r;k<=r;k++){const xx=x+k,p=xx<0||xx>=w?edge:m[y*w+xx];if(hit(p)){v=dil?1:0;break}}t[y*w+x]=v}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=dil?0:1;
+    for(let k=-r;k<=r;k++){const yy=y+k,p=yy<0||yy>=h?edge:t[yy*w+x];if(hit(p)){v=dil?1:0;break}}o[y*w+x]=v}
+  return o;
+}
+async function detect(photo){
+  const P=photo||lastPhoto;if(!P){$('st').textContent='Envie uma foto primeiro.';return}
+  const ph=P.id,img=P.img,W=img.naturalWidth,H=img.naturalHeight;
+  cards=cards.filter(c=>c.ph!==ph);trash=trash.filter(c=>c.ph!==ph);sync();order=order.filter(i=>byId(i));
+  let msg='';
+  if($('md').value==='grid'){
+    const gc=+$('gc').value,gr=+$('gr').value,w=W/gc,h=H/gr,mg=(+$('gm').value||0)/100;
+    for(let r=0;r<gr;r++)for(let c=0;c<gc;c++)crop(img,c*w+w*mg,r*h+h*mg,w*(1-2*mg),h*(1-2*mg),ph);
+    msg=gc*gr+' recortes em grade.';
+  }else{
+    const sc=Math.min(1,640/W),w=Math.round(W*sc),h=Math.round(H*sc),cv=document.createElement('canvas');
+    cv.width=w;cv.height=h;const x=cv.getContext('2d');x.drawImage(img,0,0,w,h);
+    const d=x.getImageData(0,0,w,h).data,lab=new Array(w*h);
+    for(let i=0;i<w*h;i++)lab[i]=rgb2lab(d[i*4],d[i*4+1],d[i*4+2]);
+    const bd=[];for(let i=0;i<w;i++)bd.push(lab[i],lab[(h-1)*w+i]);for(let j=0;j<h;j++)bd.push(lab[j*w],lab[j*w+w-1]);
+    const bg=[0,1,2].map(k=>bd.map(p=>p[k]).sort((a,b)=>a-b)[bd.length>>1]),th=+$('sv').value;
+    let m=new Uint8Array(w*h);for(let i=0;i<w*h;i++)m[i]=dist(lab[i],bg)>th?1:0;
+    m=morph(m,w,h,4,1);m=morph(m,w,h,4,0);m=morph(m,w,h,2,0);m=morph(m,w,h,2,1);
+    const seen=new Uint8Array(w*h),boxes=[];
+    for(let s0=0;s0<w*h;s0++){
+      if(!m[s0]||seen[s0])continue;
+      let x0=w,y0=h,x1=0,y1=0,n=0;const st=[s0];seen[s0]=1;
+      while(st.length){
+        const p=st.pop(),px=p%w,py=(p/w)|0;n++;
+        if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py;
+        for(const q of [p-1,p+1,p-w,p+w]){
+          if(q<0||q>=w*h||seen[q]||!m[q])continue;
+          if((q===p-1&&px===0)||(q===p+1&&px===w-1))continue;
+          seen[q]=1;st.push(q);
+        }
+      }
+      const bw=x1-x0+1,bh=y1-y0+1,ar=Math.min(bw,bh)/Math.max(bw,bh);
+      if(n>w*h*.004&&n/(bw*bh)>.55&&ar>.5&&ar<.98)boxes.push([x0,y0,bw,bh,bw*bh]);
+    }
+    if(!boxes.length)msg='Nenhuma carta detectada. Ajuste a sensibilidade, use fundo liso ou "Dividir em grade".';
+    else{
+      const hm=boxes.map(b=>b[3]).sort((a,b)=>a-b)[boxes.length>>1],ar=boxes.map(b=>b[4]).sort((a,b)=>a-b)[boxes.length>>1];
+      boxes.sort((a,b)=>Math.round(a[1]/(hm*.6))-Math.round(b[1]/(hm*.6))||a[0]-b[0]);
+      boxes.forEach(([bx,by,bw,bh])=>crop(img,(bx+bw*.03)/sc,(by+bh*.03)/sc,bw*.94/sc,bh*.94/sc,ph));
+      msg=boxes.length+' cartas detectadas.';
+      if(boxes.some(b=>b[4]>ar*1.7))msg+=' Algumas parecem coladas; se errar, afaste as cartas ou use a grade.';
+      msg+=' Dica: selecione uma carta e aperte R para removê-la.';
+    }
+  }
+  added(msg);
+}
+function added(msg){ // novas cartas entram sem apagar as que já estão no fichário
+  sync();const known=new Set(order);cards.forEach(c=>{if(!known.has(c.id))order.push(c.id)});
+  order=order.filter(i=>byId(i));
+  if($('ao').checked)organize();else{sel=null;render()}
+  $('st').textContent=msg+' Total: '+cards.length+' cartas.'+($('ao').checked?'':' Clique em "Organizar por cor" para encaixá-las.');
+}
+$('pf').onchange=async e=>{
+  const files=[...e.target.files];if(!files.length)return;e.target.value='';
+  for(const f of files){
+    $('st').textContent='Detectando cartas...';
+    const src=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+    lastPhoto={id:++photoId,img:await loadImg(src)};await detect();
+  }
+};
+$('rd').onclick=()=>detect();
+
+// ---- sugestões de troca ----
+function suggest(){
+  render();
+  const n=+$('sz').value,pos=id=>order.indexOf(id),get=p=>order.slice(p*n,p*n+n),cand=[];
+  order.forEach(a=>order.forEach(b=>{
+    if(byId(a).locked||byId(b).locked)return;const pa=Math.floor(pos(a)/n),pb=Math.floor(pos(b)/n);if(pa>=pb)return;
+    if(pageLocked(pa)||pageLocked(pb))return;const A=get(pa),B=get(pb),before=pageCost(A,pa)+pageCost(B,pb);
+    const gain=before-pageCost(A.map(x=>x===a?b:x),pa)-pageCost(B.map(x=>x===b?a:x),pb);
+    if(gain>1)cand.push({a,b,gain});
+  }));
+  cand.sort((x,y)=>y.gain-x.gain);
+  const used=new Set(),top=[];
+  for(const c of cand){if(used.has(c.a)||used.has(c.b))continue;used.add(c.a);used.add(c.b);top.push(c);if(top.length>=8)break}
+  const box=$('sg');
+  if(!top.length){box.innerHTML='<div class="sgi">Nenhuma troca melhora a harmonia: a organização já está boa.</div>';return}
+  box.innerHTML='<div class="s">Sugestões (maior melhora primeiro):</div>';
+  top.forEach(({a,b,gain})=>{
+    const A=byId(a),B=byId(b),pa=pos(a),pb=pos(b),row=document.createElement('div');row.className='sgi';
+    row.innerHTML=`<img src="${A.src}" alt=""><span>#${A.num} (pág ${Math.floor(pa/n)+1}, pos ${pa%n+1}) ↔ #${B.num} (pág ${Math.floor(pb/n)+1}, pos ${pb%n+1}) · melhora ${gain.toFixed(1)}</span><img src="${B.src}" alt=""><button class="p">Aplicar</button>`;
+    row.lastChild.onclick=()=>{const i=pos(a),j=pos(b);[order[i],order[j]]=[order[j],order[i]];suggest()};
+    box.appendChild(row);
+  });
+}
+$('sug').onclick=()=>{if(cards.length)suggest()};
+function toggleLock(){
+  if(!sel){$('st').textContent='Clique numa carta primeiro e depois aperte L.';return}
+  const c=byId(sel);c.locked=!c.locked;render();$('st').textContent='Carta #'+c.num+(c.locked?' travada.':' destravada.');
+}
+$('lk').onclick=toggleLock;
+function removeSel(){
+  if(!sel){$('st').textContent='Clique numa carta primeiro e depois aperte R.';return}
+  toTrash([sel]);
+}
+$('rm').onclick=removeSel;
+document.addEventListener('keydown',e=>{
+  if(!$('mod').hidden||!$('help').hidden||e.ctrlKey||e.metaKey||e.altKey||/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;
+  const k=e.key.toLowerCase();if(k==='l')toggleLock();else if(k==='r')removeSel();
+});
+function swapCards(a,b){
+  if(!a||a===b)return;const n=+$('sz').value,pg=id=>Math.floor(order.indexOf(id)/n);
+  if(byId(a).locked||byId(b).locked){render();$('st').textContent='Carta travada: destrave com L antes de mover.';return}
+  if(pageLocked(pg(a))||pageLocked(pg(b))){render();$('st').textContent='Página travada: destrave o cadeado da página antes de mover.';return}
+  const i=order.indexOf(a),j=order.indexOf(b);[order[i],order[j]]=[order[j],order[i]];render();
+}
+function toTrash(ids){
+  ids=ids.filter(i=>i&&byId(i));if(!ids.length)return;const n=+$('sz').value;
+  if(ids.some(id=>pageLocked(Math.floor(order.indexOf(id)/n)))){$('st').textContent='Página travada: destrave o cadeado da página antes de remover.';return}
+  const fr=order.map((id,i)=>[id,i]).filter(([id,i])=>!ids.includes(id)&&(byId(id).locked||pageLocked(Math.floor(i/n))));
+  ids.forEach(id=>{const c=byId(id);c.locked=false;trash.push(c)});
+  cards=cards.filter(c=>!ids.includes(c.id));order=order.filter(id=>!ids.includes(id));
+  fr.forEach(([id,i])=>{const j=order.indexOf(id);if(j!==i&&i<order.length)[order[i],order[j]]=[order[j],order[i]]}); // travadas não mudam de lugar
+  sel=null;render();$('st').textContent='Carta enviada para a lixeira.';
+}
+function restore(id){
+  const c=trash.find(x=>x.id===id);if(!c)return;
+  trash=trash.filter(x=>x!==c);cards.push(c);added('Carta #'+c.num+' restaurada.');
+}
+function renderTrash(){
+  const t=$('tr');
+  t.innerHTML='<div class="hd"><span>🗑️ Lixeira ('+trash.length+')</span><button>Esvaziar</button></div><div class="s" style="margin:0">Arraste cartas até aqui ou use R. Clique numa miniatura para restaurar.</div><div class="tl"></div>';
+  trash.forEach(c=>{const im=document.createElement('img');im.src=c.src;im.title='Restaurar #'+c.num;im.onclick=()=>restore(c.id);t.lastChild.appendChild(im)});
+  t.firstChild.lastChild.onclick=()=>{trash=[];renderTrash()};
+}
+const trEl=$('tr');
+trEl.ondragover=e=>{if(drag){e.preventDefault();trEl.classList.add('ov')}};
+trEl.ondragleave=()=>trEl.classList.remove('ov');
+trEl.ondrop=e=>{e.preventDefault();trEl.classList.remove('ov');const id=drag;drag=null;toTrash([id])};
+
+$('f').onchange=async e=>{
+  $('st').textContent='Lendo cores...';
+  const files=[...e.target.files];for(const f of files){
+    const src=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
+    const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src});
+    addCard(src,dominant(img));
+  }
+  e.target.value='';added(files.length+' carta(s) adicionada(s).');
+};
+$('go').onclick=organize;$('opt').onclick=()=>{if(cards.length)refine()};
+$('sz').onchange=()=>{const b=$('sz').value==='18';$('gc').value=b?6:3;$('gr').value=3;pcfg={};if(cards.length)organize();else render()};
+let clT=0;
+$('clr').onclick=()=>{
+  if(!clT){$('clr').textContent='Clique de novo para apagar tudo';clT=setTimeout(()=>{clT=0;$('clr').textContent='Limpar'},3000);return}
+  clearTimeout(clT);clT=0;$('clr').textContent='Limpar';
+  cards=[];order=[];trash=[];pcfg={};sel=null;render();$('st').textContent='';
+};
+const HK='bcm-hide-tour';
+const hideTour=()=>{try{return localStorage.getItem(HK)==='1'}catch(_){return false}};
+function openHelp(){$('hn').checked=hideTour();$('help').hidden=false;$('hs').focus()}
+function closeHelp(){$('help').hidden=true;try{if($('hn').checked)localStorage.setItem(HK,'1');else localStorage.removeItem(HK)}catch(_){}}
+$('hb').onclick=openHelp;$('hx').onclick=closeHelp;$('hs').onclick=closeHelp;
+$('help').addEventListener('click',e=>{if(e.target===$('help'))closeHelp()});
+$('adv').onclick=()=>{const o=$('pop').hidden;$('pop').hidden=!o;$('adv').classList.toggle('open',o);$('adv').setAttribute('aria-expanded',o)};
+
+// ---- busca de cartas em APIs (precisa de acesso à internet: arquivo local) ----
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function getJSON(url,headers){
+  let err;
+  for(let t=0;t<3;t++){
+    if(t){$('qs').textContent='API instável, tentando de novo ('+(t+1)+'/3)...';await wait(1500*t)}
+    const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),20000);
+    try{
+      const r=await fetch(url,{headers,signal:ctl.signal});
+      if(r.ok)return await r.json();
+      err=new Error('HTTP '+r.status);
+      if(r.status<500&&r.status!==429)throw err;
+    }catch(e){
+      if(e===err&&/HTTP 4/.test(e.message)&&!/429/.test(e.message))throw e;
+      err=e.name==='AbortError'?new Error('tempo esgotado'):e;
+    }finally{clearTimeout(tm)}
+  }
+  throw err;
+}
+const API={
+  tcgdex:async(q,lang,page)=>{
+    const j=await getJSON('https://api.tcgdex.net/v2/'+lang+'/cards?name='+encodeURIComponent(q)+'&pagination:page='+page+'&pagination:itemsPerPage=48');
+    return{raw:j.length,size:48,items:j.filter(c=>c.image).map(c=>({id:c.id,name:c.name,label:c.id,thumb:c.image+'/low.webp',full:c.image+'/high.webp'}))};
+  }
+};
+let Q={items:[],page:1,sel:new Set(),more:false,busy:false};
+const qa=()=>{$('qa').textContent='Adicionar ao fichário ('+Q.sel.size+')'};
+function qRender(){
+  const g=$('qr');g.innerHTML='';
+  Q.items.forEach(it=>{
+    const d=document.createElement('div');d.className='rc'+(Q.sel.has(it.id)?' on':'');
+    d.innerHTML='<img loading="lazy" alt="" src="'+it.thumb+'"><div>'+it.name+'</div><div>'+it.label+'</div>';
+    d.onclick=()=>{Q.sel.has(it.id)?Q.sel.delete(it.id):Q.sel.add(it.id);d.classList.toggle('on');qa()};
+    g.appendChild(d);
+  });
+  $('qm').hidden=!Q.more;qa();
+}
+async function doSearch(reset){
+  const q=$('q').value.trim();if(!q||Q.busy)return;
+  if(reset){Q.items=[];Q.page=1}else Q.page++;
+  Q.busy=true;$('qs').textContent='Buscando...';
+  try{
+    const r=await API.tcgdex(q,$('lang').value,Q.page);
+    r.items.forEach(i=>{if(!Q.items.some(x=>x.id===i.id))Q.items.push(i)});
+    Q.more=r.raw>=(r.size||48);
+    $('qs').textContent=Q.items.length?Q.items.length+' carta(s) com imagem. Clique para selecionar.':'Nenhuma carta com imagem encontrada. Tente outro nome ou outro idioma (ex.: English).';
+  }catch(e){
+    Q.more=false;
+    const m=String(e.message||e);
+    $('qs').textContent=/HTTP (5|429)|tempo esgotado/.test(m)
+      ?'O servidor da API não respondeu direito agora ('+m+'). Isso é instabilidade do lado deles: tente de novo em alguns minutos.'
+      :'Não foi possível acessar a API ('+m+'). Se você abriu pelo link publicado no Claude, esse ambiente bloqueia sites externos: baixe o arquivo HTML e abra direto no navegador.';
+  }
+  Q.busy=false;qRender();
+}
+async function fetchImg(url){
+  const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);
+  return loadImg(URL.createObjectURL(await r.blob()));
+}
+async function addSelected(){
+  const list=Q.items.filter(i=>Q.sel.has(i.id));if(!list.length)return;
+  let ok=0,fail=0;$('qa').disabled=true;
+  for(const it of list){
+    $('qs').textContent='Adicionando '+(ok+fail+1)+' de '+list.length+'...';
+    try{
+      let img;try{img=await fetchImg(it.full)}catch(_){img=await fetchImg(it.thumb)}
+      crop(img,0,0,img.naturalWidth,img.naturalHeight);ok++;
+    }catch(e){fail++}
+  }
+  $('qa').disabled=false;Q.sel.clear();qRender();
+  if(ok){$('mod').hidden=true;added(ok+' carta(s) adicionada(s) pela API.'+(fail?' '+fail+' falharam (a imagem pode estar bloqueada).':''))}
+  else $('qs').textContent='Não consegui baixar as imagens (provável bloqueio de CORS do servidor de imagens). Tente a outra fonte.';
+}
+$('sb').onclick=()=>{$('mod').hidden=false;$('q').focus()};
+$('mx').onclick=()=>{$('mod').hidden=true};
+$('mod').addEventListener('click',e=>{if(e.target===$('mod'))$('mod').hidden=true});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('mod').hidden=true;if(!$('help').hidden)closeHelp()}});
+$('qb').onclick=()=>doSearch(true);$('qm').onclick=()=>doSearch(false);$('qa').onclick=addSelected;
+$('q').onkeydown=e=>{if(e.key==='Enter')doSearch(true)};
+
+
+// ---- backup: exportar / importar ----
+async function saveFile(name,data){
+  for(let t=0;t<2;t++){
+    try{
+      const dl=window.claude&&claude.use?await claude.use('downloads'):null;
+      if(dl){await dl.save({filename:name,data});return true}
+      break;
+    }catch(e){
+      if(e&&e.code==='declined')return false;
+      if(e&&e.code==='rate_limited'&&!t){await wait(1500);continue}
+      break;
+    }
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();return true;
+}
+async function exportPNG(){ // uma imagem com todas as páginas do fichário
+  sync();const n=+$('sz').value,cols=n===9?3:6,rows=n/cols,pgs=pagesOf(n);if(!pgs.length)return null;
+  const css=getComputedStyle(document.documentElement),v=(k,d)=>(css.getPropertyValue(k)||'').trim()||d;
+  const C={bg:v('--bg','#f6f5f1'),card:v('--card','#fff'),fg:v('--fg','#1f1f1d'),mut:v('--mut','#6b6a64'),bd:v('--bd','#d9d6cc')};
+  const cw=84,ch=118,g=6,pad=12,hd=26,gx=18,perRow=n===9?3:2,top=66;
+  const pw=cols*cw+(cols-1)*g+pad*2,ph=hd+rows*ch+(rows-1)*g+pad*2;
+  const W=perRow*pw+(perRow+1)*gx,H=top+Math.ceil(pgs.length/perRow)*(ph+gx);
+  const sc=Math.min(2,15000/H,15000/W),cv=document.createElement('canvas');
+  cv.width=Math.round(W*sc);cv.height=Math.round(H*sc);
+  const x=cv.getContext('2d');x.scale(sc,sc);
+  const imgs=new Map(await Promise.all(pgs.flat().map(async id=>[id,await loadImg(byId(id).src)])));
+  const rr=(a,b,w,h,r)=>{x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath()};
+  x.fillStyle=C.bg;x.fillRect(0,0,W,H);
+  x.fillStyle=C.fg;x.font='700 22px system-ui,sans-serif';x.fillText('Binder Color Match',gx,34);
+  x.fillStyle=C.mut;x.font='13px system-ui,sans-serif';
+  x.fillText(cards.length+' cartas · '+pgs.length+' página(s) · '+new Date().toLocaleDateString('pt-BR'),gx,50);
+  pgs.forEach((p,pi)=>{
+    const ox=gx+(pi%perRow)*(pw+gx),oy=top+Math.floor(pi/perRow)*(ph+gx);
+    rr(ox,oy,pw,ph,12);x.fillStyle=C.card;x.fill();x.strokeStyle=C.bd;x.lineWidth=1;x.stroke();
+    x.fillStyle=C.fg;x.font='600 13px system-ui,sans-serif';x.fillText('Página '+(pi+1),ox+pad,oy+pad+11);
+    p.forEach((id,i)=>{
+      const cx=ox+pad+(i%cols)*(cw+g),cy=oy+pad+hd+Math.floor(i/cols)*(ch+g),im=imgs.get(id);
+      const iw=im.naturalWidth,ih=im.naturalHeight,ta=cw/ch;let sw=iw,sh=iw/ta;if(sh>ih){sh=ih;sw=ih*ta}
+      x.save();rr(cx,cy,cw,ch,5);x.clip();x.drawImage(im,(iw-sw)/2,(ih-sh)/2,sw,sh,cx,cy,cw,ch);x.restore();
+    });
+  });
+  return new Promise(r=>cv.toBlob(r,'image/png'));
+}
+async function exportAll(){
+  if(!cards.length&&!trash.length){$('st').textContent='Nada para exportar ainda.';return}
+  $('ex').disabled=true;sync();$('st').textContent='Gerando backup e imagem...';
+  const d=new Date().toISOString().slice(0,10);let png=null;
+  try{png=await exportPNG()}catch(e){}
+  const a=await saveFile('fichario-'+d+'.json',new Blob([JSON.stringify(snap())],{type:'application/json'}));
+  const b=png?await saveFile('fichario-'+d+'.png',png):false;
+  $('ex').disabled=false;
+  $('st').textContent=a||b?'Exportado: '+[a&&'backup .json',b&&'imagem .png'].filter(Boolean).join(' + ')+'.':'Exportação cancelada.';
+}
+$('ex').onclick=exportAll;
+$('rc').onclick=async()=>{
+  if(!cards.length)return;$('rc').disabled=true;const all=[...cards,...trash];
+  for(let i=0;i<all.length;i++){
+    $('st').textContent='Recalculando cores '+(i+1)+'/'+all.length+'...';
+    try{const img=await loadImg(all[i].src);all[i].pal=dominant(img);all[i].lab=all[i].pal[0].c}catch(_){}
+  }
+  pc.clear();$('rc').disabled=false;organize();
+};
+$('im').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.cards))throw 0;applyState(d);sel=null;render();$('st').textContent='Backup importado: '+cards.length+' cartas.'}
+  catch(_){$('st').textContent='Arquivo de backup inválido.'}
+};
+
+// ---- memória (IndexedDB, fica só neste navegador) ----
+let ready=false,svT=0,memErr=false;
+const DB={
+  open:()=>new Promise((res,rej)=>{const r=indexedDB.open('binder-color-match',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}),
+  async get(k){const d=await this.open();return new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
+  async set(k,v){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
+};
+const SET=['sz','gc','gr','gm','sv','md'];
+function snap(){const s={ao:$('ao').checked};SET.forEach(k=>s[k]=$(k).value);return{v:1,cards,order,trash,pcfg,num,photoId,s}}
+function applyState(d){
+  cards=d.cards;order=d.order||[];trash=d.trash||[];pcfg=d.pcfg||{};num=d.num||0;photoId=d.photoId||0;
+  if(d.s){SET.forEach(k=>{if(d.s[k]!=null)$(k).value=d.s[k]});$('ao').checked=d.s.ao!==false}
+  sync();order=order.filter(i=>byId(i));cards.forEach(c=>{if(!order.includes(c.id))order.push(c.id)});
+}
+function save(){
+  if(!ready)return;clearTimeout(svT);
+  svT=setTimeout(async()=>{
+    try{
+      await DB.set('state',snap());
+    }catch(e){if(!memErr){memErr=true;$('st').textContent='Memória indisponível neste navegador: o trabalho não será salvo.'}}
+  },500);
+}
+[...SET,'ao'].forEach(k=>$(k).addEventListener('change',save));
+(async()=>{
+  try{
+    const d=await DB.get('state');
+    if(d&&d.cards)applyState(d);
+  }catch(e){memErr=true}
+  ready=true;render();
+  if(cards.length)$('st').textContent+=' · restaurado da memória';
+  else if(memErr)$('st').textContent='Memória indisponível neste navegador: o trabalho não será salvo.';
+  if(!hideTour())openHelp();
+})();
+</script>
+</body>
+</html>
