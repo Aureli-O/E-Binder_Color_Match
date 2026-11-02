@@ -32,6 +32,10 @@ h1{font-size:26px;letter-spacing:-.02em;margin:0;line-height:1.1}
 .grp .btn,.grp select{justify-content:center;width:100%}
 .grp .w1,details.opt{grid-column:1/-1}
 .grp .chk{grid-column:1/-1;justify-content:flex-start;width:auto}
+.psize{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;color:var(--mut)}
+.pdim{display:inline-flex;align-items:center;gap:6px}
+.pl{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.psize small{font-size:12px;color:var(--mut);white-space:nowrap}
 .gl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);margin-right:2px}
 .btn,select,.chk{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:7px 12px;cursor:pointer;transition:background .15s,border-color .15s,transform .1s;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
 .btn:hover,select:hover{border-color:var(--ac);background:var(--acs)}
@@ -137,7 +141,7 @@ input#im{display:none}
       </div>
     </div>
     <div class="grp"><span class="gl">Organizar</span>
-      <select id="sz" class="w1"><option value="9">Página 3×3 (9)</option><option value="18">Spread 3×6 (18)</option></select>
+      <label class="w1 psize">Página <span class="pdim"><span class="pl">Col.</span><input id="pcols" type="number" value="3" min="1" max="12" step="1" aria-label="Colunas por página"><span class="pl">Lin.</span><input id="prows" type="number" value="3" min="1" max="12" step="1" aria-label="Linhas por página"><small id="pnum">9 cartas</small></span></label>
       <button class="btn p w1" id="go">Organizar por cor</button>
       <button class="btn" id="opt">Refinar</button>
       <button class="btn" id="sug">Sugerir trocas</button>
@@ -182,7 +186,7 @@ input#im{display:none}
     <div class="mb">
       <ol class="steps">
         <li><b>Adicione suas cartas</b><span>Use <em>＋ Cartas</em> para fotos avulsas, <em>📷 Foto com várias cartas</em> para dividir uma foto em grade (ajuste colunas, linhas e margem em <em>Ajustes da foto</em>) ou <em>🔎 Buscar cartas na API</em> para baixar a imagem oficial. Dá para adicionar quantas vezes quiser.</span></li>
-        <li><b>Organize por cor</b><span>Escolha <em>Página 3×3</em> ou <em>Spread 3×6</em> e clique em <em>Organizar por cor</em>. As cartas são agrupadas por página e as vizinhas ficam com cores parecidas.</span></li>
+        <li><b>Organize por cor</b><span>Escolha as <em>colunas</em> e <em>linhas</em> da página (ex.: 3×3 ou 6×3) e clique em <em>Organizar por cor</em>. As cartas são agrupadas por página e as vizinhas ficam com cores parecidas.</span></li>
         <li><b>Ajuste do seu jeito</b><span><em>Arraste</em> uma carta sobre outra para trocá-las. <em>Clique</em> numa carta para selecioná-la: <kbd>L</kbd> trava ou destrava (ela não sai do lugar ao organizar) e <kbd>R</kbd> a envia para a lixeira.</span></li>
         <li><b>Controle cada página</b><span>No topo de cada página, o <em>cadeado</em> mantém as cartas dela no lugar e o <em>seletor de cor</em> define a cor desejada. Clique em <em>Organizar por cor</em> para aplicar.</span></li>
         <li><b>Refine e confira</b><span><em>Refinar</em> procura mais trocas e <em>Sugerir trocas</em> lista melhorias com botão Aplicar. O número <em>ΔE</em> no status mede a harmonia: quanto menor, mais parecidas são as cartas vizinhas.</span></li>
@@ -242,6 +246,12 @@ function sortKey(a,b){
   if(na&&nb)return b.lab[0]-a.lab[0];      // neutros: claro -> escuro
   return hueKey(a.lab)-hueKey(b.lab)||a.lab[0]-b.lab[0];
 }
+const PAGE_MAX=12;
+const clampDim=(v,d=3)=>{const x=Math.round(Number(v));return Number.isFinite(x)?Math.min(PAGE_MAX,Math.max(1,x)):d};
+const pageCols=()=>clampDim($('pcols').value);
+const pageRows=()=>clampDim($('prows').value);
+const pageN=()=>pageCols()*pageRows();
+function pageCountText(){$('pnum').textContent=pageN()+' cartas'}
 const pagesOf=n=>{const p=[];for(let i=0;i<order.length;i+=n)p.push(order.slice(i,i+n));return p};
 let M=new Map();const sync=()=>{M=new Map(cards.map(c=>[c.id,c]))};const byId=id=>M.get(id);
 // distância perceptual (luminosidade pesa menos que matiz) entre paletas de cores
@@ -283,14 +293,14 @@ function layout(ids,cols){ // polimento: melhora a vizinhança dentro da página
   return a;
 }
 function harmony(){ // distância média (ΔE) entre cartas vizinhas; menor = mais parecidas
-  const n=+$('sz').value,cols=n===9?3:6;let s=0,c=0;
+  const cols=pageCols(),n=cols*pageRows();let s=0,c=0;
   pagesOf(n).forEach(p=>{for(let i=0;i<p.length;i++){
     if(i%cols<cols-1&&i+1<p.length){s+=pdId(p[i],p[i+1]);c++}
     if(i+cols<p.length){s+=pdId(p[i],p[i+cols]);c++}}});
   return c?s/c:0;
 }
 function optimize(iter,T0){
-  sync();const n=+$('sz').value,cols=n===9?3:6,N=order.length;if(N<2)return;
+  sync();const cols=pageCols(),n=cols*pageRows(),N=order.length;if(N<2)return;
   const cs=order.map(byId),D=new Float32Array(N*N);
   for(let i=0;i<N;i++)for(let j=i+1;j<N;j++)D[i*N+j]=D[j*N+i]=pd(cs[i].pal,cs[j].pal);
   const np=Math.ceil(N/n),TG=[],P=cs.map((_,i)=>i);
@@ -334,7 +344,7 @@ function optimize(iter,T0){
 }
 function bar(p){let a=0;return 'linear-gradient(90deg,'+p.map(q=>{const s=a;a+=q.w*100;return lab2css(q.c)+' '+s+'% '+a+'%'}).join(',')+')'}
 function organize(){
-  sync();const n=+$('sz').value,N=cards.length,ord=new Array(N).fill(null);
+  sync();const n=pageN(),N=cards.length,ord=new Array(N).fill(null);
   cards.forEach(c=>{const p=order.indexOf(c.id);if(p>=0&&p<N&&ord[p]===null&&(c.locked||pageLocked(Math.floor(p/n))))ord[p]=c.id});
   const pool=cards.filter(c=>!ord.includes(c.id));
   for(let pi=0;pi*n<N;pi++){ // páginas com cor: pega as cartas mais próximas da cor
@@ -351,10 +361,10 @@ function refine(){optimize(Math.min(120000,Math.max(20000,cards.length*600)),.8)
 
 // ---- UI ----
 function render(){
-  sync();renderTrash();save();$('sg').innerHTML='';const n=+$('sz').value,out=$('out');
+  sync();renderTrash();save();$('sg').innerHTML='';const n=pageN(),out=$('out');
   if(!cards.length){out.innerHTML='<div class="e">Nenhuma carta ainda. Envie as imagens para começar.</div>';return}
-  const pgs=pagesOf(n),cols=n===9?3:6;
-  out.innerHTML='<div class="pages '+(n===18?'w':'')+'"></div>';
+  const pgs=pagesOf(n),cols=pageCols();
+  out.innerHTML='<div class="pages '+(cols>3?'w':'')+'"></div>';
   const box=out.firstChild;
   pgs.forEach((ids,pi)=>{
     const T=tgt(pi),cf=pcfg[pi]||{},ds=ids.map(a=>T?dT(a,T):ids.length<2?0:ids.reduce((s,b)=>s+(a===b?0:pdId(a,b)),0)/(ids.length-1)),worst=ds.indexOf(Math.max(...ds)),pm=ds.reduce((s,v)=>s+v,0)/ds.length;
@@ -488,7 +498,7 @@ $('rd').onclick=()=>detect();
 // ---- sugestões de troca ----
 function suggest(){
   render();
-  const n=+$('sz').value,pos=id=>order.indexOf(id),get=p=>order.slice(p*n,p*n+n),cand=[];
+  const n=pageN(),pos=id=>order.indexOf(id),get=p=>order.slice(p*n,p*n+n),cand=[];
   order.forEach(a=>order.forEach(b=>{
     if(byId(a).locked||byId(b).locked)return;const pa=Math.floor(pos(a)/n),pb=Math.floor(pos(b)/n);if(pa>=pb)return;
     if(pageLocked(pa)||pageLocked(pb))return;const A=get(pa),B=get(pb),before=pageCost(A,pa)+pageCost(B,pb);
@@ -524,13 +534,13 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();if(k==='l')toggleLock();else if(k==='r')removeSel();
 });
 function swapCards(a,b){
-  if(!a||a===b)return;const n=+$('sz').value,pg=id=>Math.floor(order.indexOf(id)/n);
+  if(!a||a===b)return;const n=pageN(),pg=id=>Math.floor(order.indexOf(id)/n);
   if(byId(a).locked||byId(b).locked){render();$('st').textContent='Carta travada: destrave com L antes de mover.';return}
   if(pageLocked(pg(a))||pageLocked(pg(b))){render();$('st').textContent='Página travada: destrave o cadeado da página antes de mover.';return}
   const i=order.indexOf(a),j=order.indexOf(b);[order[i],order[j]]=[order[j],order[i]];render();
 }
 function toTrash(ids){
-  ids=ids.filter(i=>i&&byId(i));if(!ids.length)return;const n=+$('sz').value;
+  ids=ids.filter(i=>i&&byId(i));if(!ids.length)return;const n=pageN();
   if(ids.some(id=>pageLocked(Math.floor(order.indexOf(id)/n)))){$('st').textContent='Página travada: destrave o cadeado da página antes de remover.';return}
   const fr=order.map((id,i)=>[id,i]).filter(([id,i])=>!ids.includes(id)&&(byId(id).locked||pageLocked(Math.floor(i/n))));
   ids.forEach(id=>{const c=byId(id);c.locked=false;trash.push(c)});
@@ -566,7 +576,17 @@ $('f').onchange=async e=>{
   added(ok+' carta(s) adicionada(s).'+(ok<files.length?' '+(files.length-ok)+' falharam (arquivo inválido ou imagem não suportada).':''));
 };
 $('go').onclick=organize;$('opt').onclick=()=>{if(cards.length)refine()};
-$('sz').onchange=()=>{const b=$('sz').value==='18';$('gc').value=b?6:3;$('gr').value=3;pcfg={};if(cards.length)organize();else render()};
+function applyPageSize(){
+  const cols=pageCols(),rows=pageRows();
+  $('pcols').value=cols;$('prows').value=rows;
+  $('gc').value=cols;$('gr').value=rows;
+  pageCountText();pcfg={};
+  if(cards.length)organize();else render();
+}
+['pcols','prows'].forEach(id=>{
+  $(id).addEventListener('input',pageCountText);
+  $(id).addEventListener('change',applyPageSize);
+});
 let clT=0;
 $('clr').onclick=()=>{
   if(!clT){$('clr').textContent='Clique de novo para apagar tudo';clT=setTimeout(()=>{clT=0;$('clr').textContent='Limpar'},3000);return}
@@ -689,10 +709,10 @@ async function saveFile(name,data){
   document.body.appendChild(a);a.click();a.remove();return true;
 }
 async function exportPNG(){ // uma imagem com todas as páginas do fichário
-  sync();const n=+$('sz').value,cols=n===9?3:6,rows=n/cols,pgs=pagesOf(n);if(!pgs.length)return null;
+  sync();const cols=pageCols(),rows=pageRows(),n=cols*rows,pgs=pagesOf(n);if(!pgs.length)return null;
   const css=getComputedStyle(document.documentElement),v=(k,d)=>(css.getPropertyValue(k)||'').trim()||d;
   const C={bg:v('--bg','#f6f5f1'),card:v('--card','#fff'),fg:v('--fg','#1f1f1d'),mut:v('--mut','#6b6a64'),bd:v('--bd','#d9d6cc')};
-  const cw=84,ch=118,g=6,pad=12,hd=26,gx=18,perRow=n===9?3:2,top=66;
+  const cw=84,ch=118,g=6,pad=12,hd=26,gx=18,perRow=cols<=3?3:2,top=66;
   const pw=cols*cw+(cols-1)*g+pad*2,ph=hd+rows*ch+(rows-1)*g+pad*2;
   const W=perRow*pw+(perRow+1)*gx,H=top+Math.ceil(pgs.length/perRow)*(ph+gx);
   const sc=Math.min(2,15000/H,15000/W),cv=document.createElement('canvas');
@@ -794,13 +814,13 @@ function parseBackup(d){
   const s={};
   if(d.s&&typeof d.s==='object'&&!Array.isArray(d.s)){
     if(typeof d.s.ao==='boolean')s.ao=d.s.ao;
-    const lim={gc:[1,12],gr:[1,12],gm:[0,20],sv:[8,45]};
+    if(d.s.sz==='9'||d.s.sz==='18'){s.pcols=d.s.sz==='18'?'6':'3';s.prows='3'}
+    const lim={pcols:[1,12],prows:[1,12],gc:[1,12],gr:[1,12],gm:[0,20],sv:[8,45]};
     Object.keys(lim).forEach(k=>{
       const v=Number(d.s[k]),lo=lim[k][0],hi=lim[k][1];
       if(Number.isFinite(v)&&v>=lo&&v<=hi)s[k]=String(v);
     });
     if(d.s.md==='grid'||d.s.md==='auto')s.md=d.s.md;
-    if(d.s.sz==='9'||d.s.sz==='18')s.sz=d.s.sz;
   }
   const num0=Number.isInteger(d.num)&&d.num>0?d.num:0,photo0=Number.isInteger(d.photoId)&&d.photoId>0?d.photoId:0;
   return{v:1,cards,order,trash,pcfg,num:Math.max(num0,maxNum),photoId:Math.max(photo0,maxPhoto),s};
@@ -846,15 +866,20 @@ const DB={
   async get(k){const d=await this.open();return new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
   async set(k,v){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
 };
-const SET=['sz','gc','gr','gm','sv','md'];
+const SET=['pcols','prows','gc','gr','gm','sv','md'];
 function snap(){const s={ao:$('ao').checked};SET.forEach(k=>s[k]=$(k).value);return{v:1,cards,order,trash,pcfg,num,photoId,s}}
 function applyState(d){
   cards=d.cards;order=d.order||[];trash=d.trash||[];pcfg=d.pcfg||{};
   num=Number.isInteger(d.num)?d.num:0;photoId=Number.isInteger(d.photoId)?d.photoId:0;
   if(d.s&&typeof d.s==='object'){
+    if(d.s.sz==='9'||d.s.sz==='18'){
+      if(d.s.pcols==null)d.s.pcols=d.s.sz==='18'?'6':'3';
+      if(d.s.prows==null)d.s.prows='3';
+    }
     SET.forEach(k=>{if(d.s[k]!=null)$(k).value=d.s[k]});
     if(typeof d.s.ao==='boolean')$('ao').checked=d.s.ao;
   }
+  $('pcols').value=pageCols();$('prows').value=pageRows();pageCountText();
   pc.clear();lastPhoto=null;sel=null;
   sync();order=order.filter(i=>byId(i));cards.forEach(c=>{if(!order.includes(c.id))order.push(c.id)});
 }

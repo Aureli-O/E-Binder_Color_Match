@@ -14,7 +14,7 @@ Organize o seu fichário de cartas Pokémon por cor. Envie as imagens das cartas
 - Dá para adicionar quantas vezes quiser; as cartas se acumulam.
 
 **Organizar**
-- Páginas **3×3** (9 cartas) ou **spread 3×6** (18 cartas).
+- Páginas com **colunas e linhas configuráveis** (ex.: 3×3, 6×3 ou 4×3); o tamanho escolhido é salvo no backup.
 - **Organizar por cor**, **Refinar** e **Sugerir trocas** (com botão *Aplicar*).
 - **Harmonia (ΔE)** no status: distância média entre cartas vizinhas (menor = mais parecidas).
 - **Recalcular cores** refaz a paleta das cartas já adicionadas.
@@ -27,7 +27,7 @@ Organize o seu fichário de cartas Pokémon por cor. Envie as imagens das cartas
 
 **Dados**
 - Salvamento automático no navegador.
-- **Exportar** gera um backup `.json` e uma imagem `.png` com todas as páginas; **Importar** restaura o backup.
+- **Exportar** gera um backup `.json` (com cartas, ajustes e tamanho da página) e uma imagem `.png` com todas as páginas; **Importar** restaura o backup.
 
 ---
 
@@ -47,7 +47,7 @@ O link publicado bloqueia acesso a sites externos, então a busca só funciona n
 ## Passo a passo
 
 1. **Adicione as cartas**: `＋ Cartas`, `📷 Foto com várias cartas` (ajuste grade, margem e sensibilidade em *Ajustes da foto*) ou `🔎 Buscar cartas na API`.
-2. **Escolha o tamanho da página** e clique em **Organizar por cor**.
+2. **Escolha as colunas e linhas da página** e clique em **Organizar por cor**.
 3. **Ajuste do seu jeito**: arraste, trave, remova, escolha cor e cadeado por página.
 4. **Refine** e confira a harmonia no status.
 5. **Exporte** quando terminar.
@@ -85,7 +85,7 @@ Cartas travadas, e as de uma página travada, não podem ser movidas nem removid
 
 ## Memória e privacidade
 
-- Tudo é salvo em **IndexedDB**, meio segundo após cada mudança: cartas, posições, travas, cores, lixeira e ajustes.
+- Tudo é salvo em **IndexedDB**, meio segundo após cada mudança: cartas, posições, travas, cores, lixeira, tamanho da página e ajustes.
 - Suas fotos **não são enviadas a nenhum servidor**. A única comunicação externa é a busca, que consulta `api.tcgdex.net` e baixa imagens de `assets.tcgdex.net`.
 - **Limpar** pede um segundo clique e apaga tudo, inclusive a lixeira. **Importar** substitui o fichário atual.
 
@@ -112,7 +112,7 @@ Cartas travadas, e as de uma página travada, não podem ser movidas nem removid
 ## Estrutura
 
 ```
-binder-color-match.html   # aplicação completa (HTML + CSS + JavaScript)
+index.html                # aplicação completa (HTML + CSS + JavaScript)
 README.md
 ```
 
