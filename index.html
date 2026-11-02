@@ -18,7 +18,9 @@ body{margin:0;overflow:hidden;background:var(--bg);color:var(--fg);font:15px/1.4
 .side{min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:12px;padding:2px 4px 16px 2px}
 .main{min-height:0;overflow-y:auto;padding:0 6px 48px 0}
 .mbar{position:sticky;top:0;z-index:10;padding:2px 0 10px;background:var(--bg)}
-.mbar:has(.stat:empty){display:none}
+.mbar:has(.stat:empty):has(.warn[hidden]){display:none}
+.warn{margin-top:8px;padding:8px 12px;border:1px solid #dc2626;border-radius:12px;background:rgba(220,38,38,.1);color:var(--fg);font-size:13px;box-shadow:var(--sh)}
+.warn[hidden]{display:none}
 .top{margin:2px 0 2px}
 h1{font-size:26px;letter-spacing:-.02em;margin:0;line-height:1.1}
 .sub{margin:4px 0 0;color:var(--mut);font-size:14px}
@@ -156,7 +158,7 @@ input#im{display:none}
   <div class="foot"><button class="helpb" id="hb" title="Como usar" aria-label="Como usar o site">?</button><span class="hint">Precisa de ajuda? Clique no <b>?</b> para ver o passo a passo.</span></div>
 </aside>
 <main class="main">
-  <div class="mbar"><span id="st" class="stat"></span></div>
+  <div class="mbar"><span id="st" class="stat"></span><div id="warn" class="warn" role="alert" hidden></div></div>
   <div id="sg"></div>
   <div id="out"></div>
 </main>
@@ -250,8 +252,8 @@ function pd(A,B){
 }
 const pc=new Map();
 function pdId(a,b){
-  const A=byId(a),B=byId(b),k=A.num<B.num?A.num*65536+B.num:B.num*65536+A.num;
-  let v=pc.get(k);if(v===undefined){v=pd(A.pal,B.pal);pc.set(k,v)}return v;
+  const A=byId(a),B=byId(b),k=A.num<B.num?A.num+'|'+B.num:B.num+'|'+A.num;
+  let v=pc.get(k);if(v===undefined){v=pd(A.pal,B.pal);pc.set(k,v)}return v
 }
 const hex2lab=h=>rgb2lab(parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16));
 const tgt=pi=>pi!=null&&pcfg[pi]&&pcfg[pi].color?hex2lab(pcfg[pi].color):null;
@@ -380,8 +382,24 @@ function render(){
   $('st').textContent=cards.length+' cartas · '+pgs.length+' página(s)';
 }
 // ---- foto única: detecção das cartas ----
-const loadImg=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src});
+const loadImg=(src,timeout=15000)=>new Promise((resolve,reject)=>{
+  const i=new Image();let done=false,tm;
+  const finish=(fn,v)=>{if(done)return;done=true;clearTimeout(tm);i.onload=i.onerror=null;fn(v)};
+  tm=setTimeout(()=>finish(reject,new Error('tempo esgotado ao carregar a imagem')),timeout);
+  i.onload=()=>finish(resolve,i);
+  i.onerror=()=>finish(reject,new Error('não foi possível carregar a imagem'));
+  i.src=src;
+});
+const readFile=(file,timeout=30000)=>new Promise((resolve,reject)=>{
+  const fr=new FileReader();let done=false,tm;
+  const finish=(fn,v)=>{if(done)return;done=true;clearTimeout(tm);fr.onload=fr.onerror=null;fn(v)};
+  tm=setTimeout(()=>{try{fr.abort()}catch(_){}finish(reject,new Error('tempo esgotado ao ler o arquivo'))},timeout);
+  fr.onload=()=>finish(resolve,fr.result);
+  fr.onerror=()=>finish(reject,fr.error||new Error('falha ao ler o arquivo'));
+  fr.readAsDataURL(file);
+});
 function crop(img,x,y,w,h,ph){
+  if(!(w>0&&h>0))return;
   const s=Math.min(1,320/Math.max(w,h)),cv=document.createElement('canvas'),rot=w>h;
   cv.width=Math.max(1,Math.round((rot?h:w)*s));cv.height=Math.max(1,Math.round((rot?w:h)*s));
   const c=cv.getContext('2d');
@@ -400,19 +418,21 @@ function morph(m,w,h,r,dil){
 async function detect(photo){
   const P=photo||lastPhoto;if(!P){$('st').textContent='Envie uma foto primeiro.';return}
   const ph=P.id,img=P.img,W=img.naturalWidth,H=img.naturalHeight;
-  cards=cards.filter(c=>c.ph!==ph);trash=trash.filter(c=>c.ph!==ph);sync();order=order.filter(i=>byId(i));
-  let msg='';
+  if(!(W>0&&H>0)){$('st').textContent='A foto não tem dimensões válidas.';return}
+  cards=cards.filter(c=>c.ph!==ph);trash=trash.filter(c=>c.ph!==ph);sync();order=order.filter(i=>byId(i));pc.clear();
+  const clamp=(v,lo,hi,d)=>{v=Math.round(+v);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d};
+  let msg='',fail=0;
   if($('md').value==='grid'){
-    const gc=+$('gc').value,gr=+$('gr').value,w=W/gc,h=H/gr,mg=(+$('gm').value||0)/100;
-    for(let r=0;r<gr;r++)for(let c=0;c<gc;c++)crop(img,c*w+w*mg,r*h+h*mg,w*(1-2*mg),h*(1-2*mg),ph);
-    msg=gc*gr+' recortes em grade.';
+    const gc=clamp($('gc').value,1,12,3),gr=clamp($('gr').value,1,12,3),w=W/gc,h=H/gr,mg=Math.min(20,Math.max(0,+$('gm').value||0))/100;
+    for(let r=0;r<gr;r++)for(let c=0;c<gc;c++){try{crop(img,c*w+w*mg,r*h+h*mg,w*(1-2*mg),h*(1-2*mg),ph)}catch(_){fail++}}
+    msg=gc*gr+' recortes em grade.'+(fail?' '+fail+' falharam.':'');
   }else{
-    const sc=Math.min(1,640/W),w=Math.round(W*sc),h=Math.round(H*sc),cv=document.createElement('canvas');
+    const sc=Math.min(1,640/Math.max(W,H)),w=Math.round(W*sc),h=Math.round(H*sc),cv=document.createElement('canvas');
     cv.width=w;cv.height=h;const x=cv.getContext('2d');x.drawImage(img,0,0,w,h);
     const d=x.getImageData(0,0,w,h).data,lab=new Array(w*h);
     for(let i=0;i<w*h;i++)lab[i]=rgb2lab(d[i*4],d[i*4+1],d[i*4+2]);
     const bd=[];for(let i=0;i<w;i++)bd.push(lab[i],lab[(h-1)*w+i]);for(let j=0;j<h;j++)bd.push(lab[j*w],lab[j*w+w-1]);
-    const bg=[0,1,2].map(k=>bd.map(p=>p[k]).sort((a,b)=>a-b)[bd.length>>1]),th=+$('sv').value;
+    const bg=[0,1,2].map(k=>bd.map(p=>p[k]).sort((a,b)=>a-b)[bd.length>>1]),th=clamp($('sv').value,8,45,20);
     let m=new Uint8Array(w*h);for(let i=0;i<w*h;i++)m[i]=dist(lab[i],bg)>th?1:0;
     m=morph(m,w,h,4,1);m=morph(m,w,h,4,0);m=morph(m,w,h,2,0);m=morph(m,w,h,2,1);
     const seen=new Uint8Array(w*h),boxes=[];
@@ -435,8 +455,9 @@ async function detect(photo){
     else{
       const hm=boxes.map(b=>b[3]).sort((a,b)=>a-b)[boxes.length>>1],ar=boxes.map(b=>b[4]).sort((a,b)=>a-b)[boxes.length>>1];
       boxes.sort((a,b)=>Math.round(a[1]/(hm*.6))-Math.round(b[1]/(hm*.6))||a[0]-b[0]);
-      boxes.forEach(([bx,by,bw,bh])=>crop(img,(bx+bw*.03)/sc,(by+bh*.03)/sc,bw*.94/sc,bh*.94/sc,ph));
+      boxes.forEach(([bx,by,bw,bh])=>{try{crop(img,(bx+bw*.03)/sc,(by+bh*.03)/sc,bw*.94/sc,bh*.94/sc,ph)}catch(_){fail++}});
       msg=boxes.length+' cartas detectadas.';
+      if(fail)msg+=' '+fail+' não puderam ser recortadas.';
       if(boxes.some(b=>b[4]>ar*1.7))msg+=' Algumas parecem coladas; se errar, afaste as cartas ou use a grade.';
       msg+=' Dica: selecione uma carta e aperte R para removê-la.';
     }
@@ -450,12 +471,17 @@ function added(msg){ // novas cartas entram sem apagar as que já estão no fich
   $('st').textContent=msg+' Total: '+cards.length+' cartas.'+($('ao').checked?'':' Clique em "Organizar por cor" para encaixá-las.');
 }
 $('pf').onchange=async e=>{
-  const files=[...e.target.files];if(!files.length)return;e.target.value='';
+  const files=[...e.target.files];e.target.value='';if(!files.length)return;
+  let done=0,fail=0,err=null;
   for(const f of files){
-    $('st').textContent='Detectando cartas...';
-    const src=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
-    lastPhoto={id:++photoId,img:await loadImg(src)};await detect();
+    $('st').textContent='Detectando cartas ('+(done+fail+1)+'/'+files.length+')...';
+    try{
+      const src=await readFile(f);
+      lastPhoto={id:++photoId,img:await loadImg(src)};
+      await detect();done++;
+    }catch(e){fail++;err=e}
   }
+  if(fail)$('st').textContent=done+' foto(s) processada(s); '+fail+' falharam'+(err&&err.message?': '+err.message:'')+'.';
 };
 $('rd').onclick=()=>detect();
 
@@ -528,13 +554,16 @@ trEl.ondragleave=()=>trEl.classList.remove('ov');
 trEl.ondrop=e=>{e.preventDefault();trEl.classList.remove('ov');const id=drag;drag=null;toTrash([id])};
 
 $('f').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';if(!files.length)return;
   $('st').textContent='Lendo cores...';
-  const files=[...e.target.files];for(const f of files){
-    const src=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(f)});
-    const img=await new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src});
-    addCard(src,dominant(img));
+  let ok=0;
+  for(const f of files){
+    try{
+      const src=await readFile(f),img=await loadImg(src);
+      addCard(src,dominant(img));ok++;
+    }catch(_){}
   }
-  e.target.value='';added(files.length+' carta(s) adicionada(s).');
+  added(ok+' carta(s) adicionada(s).'+(ok<files.length?' '+(files.length-ok)+' falharam (arquivo inválido ou imagem não suportada).':''));
 };
 $('go').onclick=organize;$('opt').onclick=()=>{if(cards.length)refine()};
 $('sz').onchange=()=>{const b=$('sz').value==='18';$('gc').value=b?6:3;$('gr').value=3;pcfg={};if(cards.length)organize();else render()};
@@ -542,7 +571,7 @@ let clT=0;
 $('clr').onclick=()=>{
   if(!clT){$('clr').textContent='Clique de novo para apagar tudo';clT=setTimeout(()=>{clT=0;$('clr').textContent='Limpar'},3000);return}
   clearTimeout(clT);clT=0;$('clr').textContent='Limpar';
-  cards=[];order=[];trash=[];pcfg={};sel=null;render();$('st').textContent='';
+  cards=[];order=[];trash=[];pcfg={};sel=null;drag=null;lastPhoto=null;num=0;photoId=0;pc.clear();render();$('st').textContent='';
 };
 const HK='bcm-hide-tour';
 const hideTour=()=>{try{return localStorage.getItem(HK)==='1'}catch(_){return false}};
@@ -608,18 +637,27 @@ async function doSearch(reset){
   Q.busy=false;qRender();
 }
 async function fetchImg(url){
-  const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);
-  return loadImg(URL.createObjectURL(await r.blob()));
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),30000);
+  try{
+    const r=await fetch(url,{signal:ctl.signal});if(!r.ok)throw new Error('HTTP '+r.status);
+    const u=URL.createObjectURL(await r.blob());
+    try{return{img:await loadImg(u),url:u}}catch(e){URL.revokeObjectURL(u);throw e}
+  }catch(e){
+    if(e.name==='AbortError')throw new Error('tempo esgotado ao baixar a imagem');
+    throw e;
+  }finally{clearTimeout(tm)}
 }
 async function addSelected(){
   const list=Q.items.filter(i=>Q.sel.has(i.id));if(!list.length)return;
   let ok=0,fail=0;$('qa').disabled=true;
   for(const it of list){
     $('qs').textContent='Adicionando '+(ok+fail+1)+' de '+list.length+'...';
+    let obj=null;
     try{
-      let img;try{img=await fetchImg(it.full)}catch(_){img=await fetchImg(it.thumb)}
-      crop(img,0,0,img.naturalWidth,img.naturalHeight);ok++;
+      let res;try{res=await fetchImg(it.full)}catch(_){res=await fetchImg(it.thumb)}
+      obj=res.url;crop(res.img,0,0,res.img.naturalWidth,res.img.naturalHeight);ok++;
     }catch(e){fail++}
+    finally{if(obj)URL.revokeObjectURL(obj)}
   }
   $('qa').disabled=false;Q.sel.clear();qRender();
   if(ok){$('mod').hidden=true;added(ok+' carta(s) adicionada(s) pela API.'+(fail?' '+fail+' falharam (a imagem pode estar bloqueada).':''))}
@@ -635,6 +673,7 @@ $('q').onkeydown=e=>{if(e.key==='Enter')doSearch(true)};
 
 // ---- backup: exportar / importar ----
 async function saveFile(name,data){
+  if(!data)return false;
   for(let t=0;t<2;t++){
     try{
       const dl=window.claude&&claude.use?await claude.use('downloads'):null;
@@ -659,7 +698,8 @@ async function exportPNG(){ // uma imagem com todas as páginas do fichário
   const sc=Math.min(2,15000/H,15000/W),cv=document.createElement('canvas');
   cv.width=Math.round(W*sc);cv.height=Math.round(H*sc);
   const x=cv.getContext('2d');x.scale(sc,sc);
-  const imgs=new Map(await Promise.all(pgs.flat().map(async id=>[id,await loadImg(byId(id).src)])));
+  const imgs=new Map();let missing=0;
+  await Promise.all(pgs.flat().map(async id=>{try{imgs.set(id,await loadImg(byId(id).src))}catch(_){missing++}}));
   const rr=(a,b,w,h,r)=>{x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath()};
   x.fillStyle=C.bg;x.fillRect(0,0,W,H);
   x.fillStyle=C.fg;x.font='700 22px system-ui,sans-serif';x.fillText('Binder Color Match',gx,34);
@@ -671,68 +711,182 @@ async function exportPNG(){ // uma imagem com todas as páginas do fichário
     x.fillStyle=C.fg;x.font='600 13px system-ui,sans-serif';x.fillText('Página '+(pi+1),ox+pad,oy+pad+11);
     p.forEach((id,i)=>{
       const cx=ox+pad+(i%cols)*(cw+g),cy=oy+pad+hd+Math.floor(i/cols)*(ch+g),im=imgs.get(id);
+      if(!im){
+        x.fillStyle=C.bg;x.fillRect(cx,cy,cw,ch);
+        x.fillStyle=C.mut;x.font='11px system-ui,sans-serif';x.textAlign='center';
+        x.fillText('#'+byId(id).num,cx+cw/2,cy+ch/2+4);x.textAlign='start';return;
+      }
       const iw=im.naturalWidth,ih=im.naturalHeight,ta=cw/ch;let sw=iw,sh=iw/ta;if(sh>ih){sh=ih;sw=ih*ta}
       x.save();rr(cx,cy,cw,ch,5);x.clip();x.drawImage(im,(iw-sw)/2,(ih-sh)/2,sw,sh,cx,cy,cw,ch);x.restore();
     });
   });
-  return new Promise(r=>cv.toBlob(r,'image/png'));
+  const blob=await new Promise((resolve,reject)=>cv.toBlob(b=>b?resolve(b):reject(new Error('não foi possível gerar a imagem PNG')),'image/png'));
+  return{blob,missing};
 }
 async function exportAll(){
   if(!cards.length&&!trash.length){$('st').textContent='Nada para exportar ainda.';return}
   $('ex').disabled=true;sync();$('st').textContent='Gerando backup e imagem...';
-  const d=new Date().toISOString().slice(0,10);let png=null;
-  try{png=await exportPNG()}catch(e){}
-  const a=await saveFile('fichario-'+d+'.json',new Blob([JSON.stringify(snap())],{type:'application/json'}));
-  const b=png?await saveFile('fichario-'+d+'.png',png):false;
-  $('ex').disabled=false;
-  $('st').textContent=a||b?'Exportado: '+[a&&'backup .json',b&&'imagem .png'].filter(Boolean).join(' + ')+'.':'Exportação cancelada.';
+  const d=new Date().toISOString().slice(0,10);let png=null,pngErr=null,pngMissing=0,a=false,b=false;
+  try{
+    try{const r=await exportPNG();if(r){png=r.blob;pngMissing=r.missing}}catch(e){pngErr=e}
+    a=await saveFile('fichario-'+d+'.json',new Blob([JSON.stringify(snap())],{type:'application/json'}));
+    b=png?await saveFile('fichario-'+d+'.png',png):false;
+    let msg=a||b?'Exportado: '+[a&&'backup .json',b&&'imagem .png'].filter(Boolean).join(' + ')+'.':'Exportação cancelada.';
+    if(pngErr)msg+=' A imagem .png não pôde ser gerada ('+(pngErr.message||pngErr)+').';
+    if(pngMissing)msg+=' '+pngMissing+' imagem(ns) não puderam ser incluídas no .png.';
+    $('st').textContent=msg;
+  }catch(e){$('st').textContent='Falha ao exportar: '+(e&&e.message||e)+'.'}
+  finally{$('ex').disabled=false}
 }
 $('ex').onclick=exportAll;
 $('rc').onclick=async()=>{
-  if(!cards.length)return;$('rc').disabled=true;const all=[...cards,...trash];
-  for(let i=0;i<all.length;i++){
-    $('st').textContent='Recalculando cores '+(i+1)+'/'+all.length+'...';
-    try{const img=await loadImg(all[i].src);all[i].pal=dominant(img);all[i].lab=all[i].pal[0].c}catch(_){}
-  }
-  pc.clear();$('rc').disabled=false;organize();
+  if(!cards.length)return;
+  $('rc').disabled=true;const all=[...cards,...trash];let fail=0;
+  try{
+    for(let i=0;i<all.length;i++){
+      $('st').textContent='Recalculando cores '+(i+1)+'/'+all.length+'...';
+      try{const img=await loadImg(all[i].src);all[i].pal=dominant(img);all[i].lab=all[i].pal[0].c}catch(_){fail++}
+    }
+  }finally{pc.clear();$('rc').disabled=false}
+  organize();
+  if(fail)$('st').textContent+=' · '+fail+' imagem(ns) não puderam ser lidas.';
 };
+function parseBackup(d){
+  if(!d||typeof d!=='object'||!Array.isArray(d.cards))throw new Error('o arquivo não contém uma lista de cartas');
+  const ids=new Set(),nums=new Set(),imgRe=/^data:image\/(?!svg)[a-z0-9.+-]+;base64,[a-z0-9+/=]+$/i;
+  let maxNum=0,maxPhoto=0;
+  const parseCard=(c,where)=>{
+    if(!c||typeof c!=='object'||Array.isArray(c))throw new Error(where+' inválida');
+    if(typeof c.id!=='string'||!c.id)throw new Error(where+' sem identificador');
+    if(ids.has(c.id))throw new Error('identificador de carta duplicado ('+c.id+')');
+    if(!Number.isInteger(c.num)||c.num<1)throw new Error('número inválido em '+where);
+    if(nums.has(c.num))throw new Error('número de carta duplicado ('+c.num+')');
+    if(c.id!=='c'+c.num)throw new Error('identificador inconsistente em '+where);
+    if(typeof c.src!=='string'||!imgRe.test(c.src))throw new Error('imagem inválida em '+where);
+    if(!Array.isArray(c.pal)||!c.pal.length||c.pal.length>8)throw new Error('paleta inválida em '+where);
+    const pal=c.pal.map((q,i)=>{
+      if(!q||typeof q!=='object'||!Array.isArray(q.c)||q.c.length!==3||q.c.some(v=>typeof v!=='number'||!Number.isFinite(v)))throw new Error('cor '+(i+1)+' inválida em '+where);
+      if(typeof q.w!=='number'||!Number.isFinite(q.w)||q.w<=0)throw new Error('peso de cor inválido em '+where);
+      return{c:[q.c[0],q.c[1],q.c[2]],w:q.w};
+    });
+    const tw=pal.reduce((s,q)=>s+q.w,0);pal.forEach(q=>q.w/=tw);
+    ids.add(c.id);nums.add(c.num);if(c.num>maxNum)maxNum=c.num;
+    const ph=Number.isInteger(c.ph)&&c.ph>0?c.ph:undefined;
+    if(ph&&ph>maxPhoto)maxPhoto=ph;
+    return{id:c.id,num:c.num,src:c.src,pal,lab:pal[0].c,ph,locked:c.locked===true};
+  };
+  const cards=d.cards.map((c,i)=>parseCard(c,'carta '+(i+1)));
+  const trash=Array.isArray(d.trash)?d.trash.map((c,i)=>parseCard(c,'carta da lixeira '+(i+1))):[];
+  const cardIds=new Set(cards.map(c=>c.id)),order=[],seen=new Set();
+  (Array.isArray(d.order)?d.order:cards.map(c=>c.id)).forEach(id=>{
+    if(typeof id==='string'&&cardIds.has(id)&&!seen.has(id)){seen.add(id);order.push(id)}
+  });
+  cards.forEach(c=>{if(!seen.has(c.id)){seen.add(c.id);order.push(c.id)}});
+  const pcfg={};
+  if(d.pcfg&&typeof d.pcfg==='object'&&!Array.isArray(d.pcfg))Object.keys(d.pcfg).forEach(k=>{
+    const pi=Number(k),v=d.pcfg[k];
+    if(!Number.isInteger(pi)||pi<0||!v||typeof v!=='object'||Array.isArray(v))return;
+    const e={};
+    if(v.lock===true)e.lock=true;
+    if(typeof v.color==='string'&&/^#[0-9a-f]{6}$/i.test(v.color))e.color=v.color.toLowerCase();
+    if(e.lock||e.color)pcfg[pi]=e;
+  });
+  const s={};
+  if(d.s&&typeof d.s==='object'&&!Array.isArray(d.s)){
+    if(typeof d.s.ao==='boolean')s.ao=d.s.ao;
+    const lim={gc:[1,12],gr:[1,12],gm:[0,20],sv:[8,45]};
+    Object.keys(lim).forEach(k=>{
+      const v=Number(d.s[k]),lo=lim[k][0],hi=lim[k][1];
+      if(Number.isFinite(v)&&v>=lo&&v<=hi)s[k]=String(v);
+    });
+    if(d.s.md==='grid'||d.s.md==='auto')s.md=d.s.md;
+    if(d.s.sz==='9'||d.s.sz==='18')s.sz=d.s.sz;
+  }
+  const num0=Number.isInteger(d.num)&&d.num>0?d.num:0,photo0=Number.isInteger(d.photoId)&&d.photoId>0?d.photoId:0;
+  return{v:1,cards,order,trash,pcfg,num:Math.max(num0,maxNum),photoId:Math.max(photo0,maxPhoto),s};
+}
 $('im').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
-  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.cards))throw 0;applyState(d);sel=null;render();$('st').textContent='Backup importado: '+cards.length+' cartas.'}
-  catch(_){$('st').textContent='Arquivo de backup inválido.'}
+  try{
+    if(f.size>250*1024*1024)throw new Error('o arquivo é grande demais (limite de 250 MB)');
+    const d=parseBackup(JSON.parse(await f.text()));
+    if((cards.length||trash.length)&&!confirm('Importar substitui o fichário atual, inclusive a lixeira. Continuar?')){$('st').textContent='Importação cancelada.';return}
+    applyState(d);render();$('st').textContent='Backup importado: '+cards.length+' carta(s).';
+  }catch(err){$('st').textContent='Arquivo de backup inválido: '+(err&&err.message||err)+'.'}
 };
 
 // ---- memória (IndexedDB, fica só neste navegador) ----
-let ready=false,svT=0,memErr=false;
+let ready=false,svT=0,memErr=false,dbP=null;
+function setMemError(msg){
+  memErr=true;const w=$('warn');if(w){w.textContent=msg;w.hidden=false}
+}
+function clearMemError(){
+  if(!memErr)return;memErr=false;
+  const w=$('warn');if(w){w.textContent='';w.hidden=true}
+}
 const DB={
-  open:()=>new Promise((res,rej)=>{const r=indexedDB.open('binder-color-match',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}),
+  open(){
+    if(!dbP)dbP=new Promise((res,rej)=>{
+      let r,settled=false;
+      const tm=setTimeout(()=>done(rej,new Error('tempo esgotado ao abrir a memória')),8000);
+      const done=(fn,v)=>{if(settled)return;settled=true;clearTimeout(tm);fn(v)};
+      try{r=indexedDB.open('binder-color-match',1)}catch(e){done(rej,e);return}
+      r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv')}catch(_){}}
+      r.onsuccess=()=>{
+        const d=r.result;
+        if(settled){try{d.close()}catch(_){};return}
+        d.onversionchange=()=>{try{d.close()}catch(_){};dbP=null};
+        done(res,d);
+      };
+      r.onerror=()=>done(rej,r.error);
+      r.onblocked=()=>done(rej,new Error('a memória está bloqueada por outra aba'));
+    }).catch(e=>{dbP=null;throw e});
+    return dbP;
+  },
   async get(k){const d=await this.open();return new Promise((res,rej)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
   async set(k,v){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}
 };
 const SET=['sz','gc','gr','gm','sv','md'];
 function snap(){const s={ao:$('ao').checked};SET.forEach(k=>s[k]=$(k).value);return{v:1,cards,order,trash,pcfg,num,photoId,s}}
 function applyState(d){
-  cards=d.cards;order=d.order||[];trash=d.trash||[];pcfg=d.pcfg||{};num=d.num||0;photoId=d.photoId||0;
-  if(d.s){SET.forEach(k=>{if(d.s[k]!=null)$(k).value=d.s[k]});$('ao').checked=d.s.ao!==false}
+  cards=d.cards;order=d.order||[];trash=d.trash||[];pcfg=d.pcfg||{};
+  num=Number.isInteger(d.num)?d.num:0;photoId=Number.isInteger(d.photoId)?d.photoId:0;
+  if(d.s&&typeof d.s==='object'){
+    SET.forEach(k=>{if(d.s[k]!=null)$(k).value=d.s[k]});
+    if(typeof d.s.ao==='boolean')$('ao').checked=d.s.ao;
+  }
+  pc.clear();lastPhoto=null;sel=null;
   sync();order=order.filter(i=>byId(i));cards.forEach(c=>{if(!order.includes(c.id))order.push(c.id)});
+}
+async function flushSave(){
+  if(!ready)return;
+  try{
+    await DB.set('state',snap());
+    clearMemError();
+  }catch(e){
+    const quota=e&&(e.name==='QuotaExceededError'||e.code===22||/quota/i.test(e.message||''));
+    setMemError(quota
+      ?'Memória do navegador cheia: não foi possível salvar. Exporte um backup e remova cartas do fichário ou da lixeira.'
+      :'Memória indisponível neste navegador: o trabalho não está sendo salvo. Use Exportar para guardar um backup.');
+  }
 }
 function save(){
   if(!ready)return;clearTimeout(svT);
-  svT=setTimeout(async()=>{
-    try{
-      await DB.set('state',snap());
-    }catch(e){if(!memErr){memErr=true;$('st').textContent='Memória indisponível neste navegador: o trabalho não será salvo.'}}
-  },500);
+  svT=setTimeout(flushSave,500);
 }
+function flushNow(){if(!ready)return;clearTimeout(svT);flushSave()}
 [...SET,'ao'].forEach(k=>$(k).addEventListener('change',save));
+window.addEventListener('pagehide',flushNow);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushNow()});
 (async()=>{
   try{
     const d=await DB.get('state');
     if(d&&d.cards)applyState(d);
-  }catch(e){memErr=true}
+  }catch(e){
+    setMemError('Memória indisponível neste navegador: o trabalho não será salvo. Use Exportar para guardar um backup.');
+  }
   ready=true;render();
   if(cards.length)$('st').textContent+=' · restaurado da memória';
-  else if(memErr)$('st').textContent='Memória indisponível neste navegador: o trabalho não será salvo.';
   if(!hideTour())openHelp();
 })();
 </script>
