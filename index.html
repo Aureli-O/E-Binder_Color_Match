@@ -125,12 +125,12 @@ input#im{display:none}
 <body>
 <div class="app">
 <aside class="side">
-  <header class="top"><h1>Binder Color Match do Aurelis</h1><p class="sub">Organize o seu fichário de cartas por cor.</p></header>
+  <header class="top"><h1>Binder Color Match do Aurelis</h1><p class="sub">Organize o seu fichário de cartas por cor. Projeto feito pelo Dev. Aureliano C. para ajudar a comunidade de colecionadores Pokémon! <br> Meus contatos: <a style="color: #d9d6cc;" href="https://www.linkedin.com/in/aureliano-claudio/">Linkedin</a> e <a style="color: #d9d6cc;" href="mailto:aurelianoclaudio29@gmail.com">aurelianoclaudio29@gmail.com</a></p></header>
   <section class="toolbar">
     <div class="grp"><span class="gl">Adicionar</span>
       <label class="btn w1">＋ Cartas<input id="f" type="file" accept="image/*" multiple></label>
       <label class="btn w1">📷 Foto com várias cartas<input id="pf" type="file" accept="image/*" multiple></label>
-      <button class="btn w1" id="sb">🔎 Buscar cartas na API</button>
+      <button class="btn w1" id="sb">🔎 Buscar cartas</button>
       <button class="btn w1" id="adv" aria-expanded="false" aria-controls="pop"><span class="lbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h8M20 6h-4M4 12h2M20 12h-8M4 18h10M20 18h-2"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>Ajustes da foto</span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="pop w1" id="pop" hidden>
           <label>Modo <select id="md"><option value="grid">Dividir em grade</option><option value="auto">Detecção automática</option></select></label>
@@ -184,15 +184,16 @@ input#im{display:none}
   <div class="mp" style="width:min(660px,100%)">
     <div class="mh"><strong id="ht">Como usar o Binder Color Match do Aurelis</strong><span style="flex:1"></span><button class="btn g" id="hx" aria-label="Fechar">✕</button></div>
     <div class="mb">
+      <p class="note" style="margin-bottom: 10px;"><b>Importante:</b> Meus contatos: <a style="color: #d9d6cc;" href="https://www.linkedin.com/in/aureliano-claudio/">Linkedin</a> e <a style="color: #d9d6cc;" href="mailto:aurelianoclaudio29@gmail.com">aurelianoclaudio29@gmail.com</a></p>
       <ol class="steps">
-        <li><b>Adicione suas cartas</b><span>Use <em>＋ Cartas</em> para fotos avulsas, <em>📷 Foto com várias cartas</em> para dividir uma foto em grade (ajuste colunas, linhas e margem em <em>Ajustes da foto</em>) ou <em>🔎 Buscar cartas na API</em> para baixar a imagem oficial. Dá para adicionar quantas vezes quiser.</span></li>
+        <li><b>Adicione suas cartas</b><span>Use <em>＋ Cartas</em> para fotos avulsas, <em>📷 Foto com várias cartas</em> para dividir uma foto em grade (ajuste colunas, linhas e margem em <em>Ajustes da foto</em>) ou <em>🔎 Buscar cartas</em> para baixar a imagem oficial. Dá para adicionar quantas vezes quiser.</span></li>
         <li><b>Organize por cor</b><span>Escolha as <em>colunas</em> e <em>linhas</em> da página (ex.: 3×3 ou 6×3) e clique em <em>Organizar por cor</em>. As cartas são agrupadas por página e as vizinhas ficam com cores parecidas.</span></li>
         <li><b>Ajuste do seu jeito</b><span><em>Arraste</em> uma carta sobre outra para trocá-las. <em>Clique</em> numa carta para selecioná-la: <kbd>L</kbd> trava ou destrava (ela não sai do lugar ao organizar) e <kbd>R</kbd> a envia para a lixeira.</span></li>
         <li><b>Controle cada página</b><span>No topo de cada página, o <em>cadeado</em> mantém as cartas dela no lugar e o <em>seletor de cor</em> define a cor desejada. Clique em <em>Organizar por cor</em> para aplicar.</span></li>
         <li><b>Refine e confira</b><span><em>Refinar</em> procura mais trocas e <em>Sugerir trocas</em> lista melhorias com botão Aplicar. O número <em>ΔE</em> no status mede a harmonia: quanto menor, mais parecidas são as cartas vizinhas.</span></li>
         <li><b>Salve e exporte</b><span>Tudo é salvo sozinho neste navegador. <em>Exportar</em> baixa um backup (.json) e uma imagem (.png) com todas as páginas; <em>Importar</em> restaura um backup. A lixeira guarda cartas removidas até você esvaziá-la.</span></li>
       </ol>
-      <p class="note"><b>Importante:</b> Caso tenha alguma sugestão para o site, mande para o email: aurelianoclaudio29@gmail.com</p>
+      <p class="note"><b>Importante:</b> Caso tenha alguma sugestão para o site, mande para o <a style="color: #d9d6cc;" href="mailto:aurelianoclaudio29@gmail.com">aurelianoclaudio29@gmail.com</a></p>
     </div>
     <div class="mf"><label class="chk"><input type="checkbox" id="hn"> Não mostrar novamente</label><button class="btn p" id="hs">Começar</button></div>
   </div>
